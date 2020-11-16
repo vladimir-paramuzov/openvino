@@ -29,6 +29,38 @@ cldnn::activation_func activation_from_name(std::string name) {
         return cldnn::activation_func::none;
 }
 
+template <typename T>
+void getLSTMActivationStuff(const std::shared_ptr<T>& op,
+    std::vector<cldnn::activation_func>& activations,
+    std::vector<cldnn::activation_additional_params>& activation_params) {
+    activations = { cldnn::activation_func::logistic,
+                    cldnn::activation_func::hyperbolic_tan,
+                    cldnn::activation_func::hyperbolic_tan };
+    activation_params = {};
+    auto op_activations = op->get_activations();
+    if (!op_activations.empty()) {
+        if (op_activations.size() != 3)
+            THROW_IE_EXCEPTION << "Wrong number of activations for LSTMCell op " << op->get_friendly_name();
+        for (int i = 0; i < 3; i++) {
+            auto af = activation_from_name(op_activations[i]);
+            if (af == cldnn::activation_func::none)
+                THROW_IE_EXCEPTION << "Wrong or unsupported activation type " << op_activations[i]
+                << " for LSTMCell op " << op->get_friendly_name();
+            activations[i] = af;
+        }
+    }
+    auto op_a = op->get_activations_alpha();
+    auto op_b = op->get_activations_beta();
+    if (!op_a.empty()) {
+        if (op_a.size() != 3 || op_b.size() != 3)
+            THROW_IE_EXCEPTION << "Wrong number of activation parameters for LSTMCell op " << op->get_friendly_name();
+        for (int i = 0; i < 3; i++) {
+            cldnn::activation_additional_params params = { op_a[i], op_b[i] };
+            activation_params.push_back(cldnn::activation_additional_params(params));
+        }
+    }
+}
+
 void Program::CreateLSTMCellOp(cldnn::topology& topology, const std::shared_ptr<ngraph::Node>& node) {
     auto op = std::dynamic_pointer_cast<ngraph::op::v4::LSTMCell>(node);
     if (!op)
@@ -59,32 +91,9 @@ void Program::CreateLSTMCellOp(cldnn::topology& topology, const std::shared_ptr<
         lstm_hidden_size = out_dims0.back();
     }
 
-    std::vector<cldnn::activation_func> activations = { cldnn::activation_func::logistic,
-                                                        cldnn::activation_func::hyperbolic_tan,
-                                                        cldnn::activation_func::hyperbolic_tan };
-    std::vector<cldnn::activation_additional_params> activation_params = {};
-    auto op_activations = op->get_activations();
-    if (!op_activations.empty()) {
-        if (op_activations.size() != 3)
-            THROW_IE_EXCEPTION << "Wrong number of activations for LSTMCell op " << op->get_friendly_name();
-        for (int i = 0; i < 3; i++) {
-            auto af = activation_from_name(op_activations[i]);
-            if (af == cldnn::activation_func::none)
-                THROW_IE_EXCEPTION << "Wrong or unsupported activation type " << op_activations[i]
-                                   << " for LSTMCell op " << op->get_friendly_name();
-            activations[i] = af;
-        }
-    }
-    auto op_a = op->get_activations_alpha();
-    auto op_b = op->get_activations_beta();
-    if (!op_a.empty()) {
-        if (op_a.size() != 3 || op_b.size() != 3)
-            THROW_IE_EXCEPTION << "Wrong number of activation parameters for LSTMCell op " << op->get_friendly_name();
-        for (int i = 0; i < 3; i++) {
-            cldnn::activation_additional_params params = { op_a[i], op_b[i] };
-            activation_params.push_back(cldnn::activation_additional_params(params));
-        }
-    }
+    std::vector<cldnn::activation_func> activations;
+    std::vector<cldnn::activation_additional_params> activation_params;
+    getLSTMActivationStuff(op, activations, activation_params);
     float clip = op->get_clip();
 
     //  LSTM primitive works with single precision for all in/out/weights tensors
@@ -193,33 +202,9 @@ void Program::CreateLSTMSequenceOp(cldnn::topology& topology, const std::shared_
         lstm_hidden_size = out_dims0.back();
     }
 
-    std::vector<cldnn::activation_func> activations = { cldnn::activation_func::logistic,
-                                                        cldnn::activation_func::hyperbolic_tan,
-                                                        cldnn::activation_func::hyperbolic_tan };
-    std::vector<cldnn::activation_additional_params> activation_params = {};
-    auto op_activations = op->get_activations();
-    if (!op_activations.empty()) {
-        if (op_activations.size() != 3)
-            THROW_IE_EXCEPTION << "Wrong number of activations for LSTMCell op " << op->get_friendly_name();
-        for (int i = 0; i < 3; i++) {
-            auto af = activation_from_name(op_activations[i]);
-            if (af == cldnn::activation_func::none)
-                THROW_IE_EXCEPTION << "Wrong or unsupported activation type " << op_activations[i]
-                                   << " for LSTMCell op " << op->get_friendly_name();
-            activations[i] = af;
-        }
-    }
-    auto op_a = op->get_activations_alpha();
-    auto op_b = op->get_activations_beta();
-    if (!op_a.empty()) {
-        if (op_a.size() != 3 || op_b.size() != 3)
-            THROW_IE_EXCEPTION << "Wrong number of activation parameters for LSTMCell op " << op->get_friendly_name();
-        for (int i = 0; i < 3; i++) {
-            cldnn::activation_additional_params params = { op_a[i], op_b[i] };
-            activation_params.push_back(cldnn::activation_additional_params(params));
-        }
-    }
-
+    std::vector<cldnn::activation_func> activations;
+    std::vector<cldnn::activation_additional_params> activation_params;
+    getLSTMActivationStuff(op, activations, activation_params);
     float clip = op->get_clip();
     bool isForward = op->get_direction() == ngraph::op::RecurrentSequenceDirection::FORWARD;
 
