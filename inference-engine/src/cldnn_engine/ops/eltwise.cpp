@@ -158,9 +158,12 @@ void CreatePowerOp(Program& p, const std::shared_ptr<ngraph::op::v1::Power>& op)
     CreateElementwiseOp(p, op, cldnn::eltwise_mode::pow);
 }
 
-
 void CreateFloorModOp(Program& p, const std::shared_ptr<ngraph::op::v1::FloorMod>& op) {
     CreateElementwiseOp(p, op, cldnn::eltwise_mode::floor_mod);
+}
+
+void CreateModOp(Program& p, const std::shared_ptr<ngraph::op::v1::Mod>& op) {
+    CreateElementwiseOp(p, op, cldnn::eltwise_mode::mod);
 }
 
 REGISTER_FACTORY_IMPL(v1, Add);
@@ -181,5 +184,6 @@ REGISTER_FACTORY_IMPL(v1, LogicalOr);
 REGISTER_FACTORY_IMPL(v1, LogicalXor);
 REGISTER_FACTORY_IMPL(v1, Power);
 REGISTER_FACTORY_IMPL(v1, FloorMod);
+REGISTER_FACTORY_IMPL(v1, Mod);
 
 }  // namespace CLDNNPlugin

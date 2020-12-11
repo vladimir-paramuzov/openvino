@@ -36,6 +36,7 @@ std::vector<std::string> disabledTestPatterns() {
             R"(.*EltwiseLayerTest.*IS=\(1.4.3.2.1.3\).*OpType=(Prod|Sub).*secondaryInputType=CONSTANT_opType=VECTOR_netPRC=(FP16|FP32).*)",
             R"(.*EltwiseLayerTest.*IS=\(1.4.3.2.1.3\).*OpType=Sum.*secondaryInputType=CONSTANT_opType=VECTOR_netPRC=(FP16|FP32).*)",
             R"(.*EltwiseLayerTest.*IS=\(1.4.3.2.1.3\).*OpType=Sub.*secondaryInputType=CONSTANT_opType=VECTOR_netPRC=I64.*)",
+            R"(.*EltwiseLayerTest.*IS=\(2\).*OpType=Mod.*opType=VECTOR.*)",
 
             // These tests might fail due to accuracy loss a bit bigger than threshold
             R"(.*(GRUCellTest).*)",
