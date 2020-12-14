@@ -155,7 +155,11 @@ KERNEL (mvn_gpu_ref_accross_channels)(
 
     //normalize variance
     variance /= INPUT0_FEATURE_NUM * INPUT0_SIZE_Z * INPUT0_SIZE_Y * INPUT0_SIZE_X;
+#if defined OUTSIDE_SQRT
+    variance = native_powr(variance, -0.5f) + (float)EPSILON;
+#elif defined INSIDE_SQRT
     variance = native_powr(variance + (float)EPSILON, -0.5f);
+#endif
 
     input_idx = input_first;
     for (uint f = 0; f < INPUT0_FEATURE_NUM; f++)

@@ -22,12 +22,14 @@ void CreateMVNOp(Program& p, const std::shared_ptr<ngraph::op::v0::MVN>& op) {
     bool across_channels = reductionAxes.count(chanelAxis) > 0;
     bool normalize_variance = op->get_normalize_variance();
     float eps = op->get_eps();
+    bool eps_inside_sqrt = true;
 
     auto mvnPrim = cldnn::mvn(layerName,
                               inputPrimitives[0],
-                              across_channels,
                               normalize_variance,
-                              eps);
+                              eps,
+                              eps_inside_sqrt,
+                              across_channels);
 
     p.AddPrimitive(mvnPrim);
     p.AddPrimitiveToProfiler(op);

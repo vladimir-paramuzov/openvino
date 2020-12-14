@@ -295,6 +295,14 @@ std::string toString(MVNMode mode) {
     }
 }
 
+std::string toString(MVNEpsMode mode) {
+    switch (mode) {
+        case MVNEpsMode::INSIDE_SQRT : return "INSIDE_SQRT";
+        case MVNEpsMode::OUTSIDE_SQRT : return "OUTSIDE_SQRT";
+        default: return "";
+    }
+}
+
 std::string toString(WeightsLayout layout) {
    switch (layout) {
         case WeightsLayout::oi:                                          return "OI";

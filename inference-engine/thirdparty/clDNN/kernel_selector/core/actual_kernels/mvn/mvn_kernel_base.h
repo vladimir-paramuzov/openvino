@@ -27,8 +27,9 @@ struct mvn_params : public base_params {
     mvn_params() : base_params(KernelType::MVN) {}
 
     MVNMode mvnMode = MVNMode::WITHIN_CHANNELS;
-    bool mvnNormalizeVariance = true;
-    float epsilon = 1e-10f;
+    bool mvnNormalizeVariance;
+    float epsilon;
+    MVNEpsMode mvnEpsMode;
 
     virtual ParamsKey GetParamsKey() const {
         ParamsKey k = base_params::GetParamsKey();

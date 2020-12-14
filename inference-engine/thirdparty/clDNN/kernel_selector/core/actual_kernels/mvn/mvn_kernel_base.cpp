@@ -37,6 +37,7 @@ JitConstants MVNKernelBase::GetJitConstants(const mvn_params& params, MVNKernelB
         MakeJitConstant("EPSILON", params.epsilon),
         MakeJitConstant(toString(params.mvnMode), ""),
         MakeJitConstant("NORMALIZE_VARIANCE", params.mvnNormalizeVariance),
+        MakeJitConstant(toString(params.mvnEpsMode), ""),
     });
 
     return jit;
