@@ -166,6 +166,7 @@ bool op::v0::PriorBoxClustered::evaluate(const HostTensorVector& outputs,
                                          const HostTensorVector& inputs) const
 {
     NGRAPH_OP_SCOPE(v0_PriorBoxClustered_evaluate,
-                    return prior_box_clustered::evaluate_prior_box(inputs[0], inputs[1], outputs[0], get_attrs()););
+                    return prior_box_clustered::evaluate_prior_box(
+                        inputs[0], inputs[1], outputs[0], get_attrs()););
     return false;
 }

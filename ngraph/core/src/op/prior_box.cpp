@@ -193,6 +193,7 @@ bool op::v0::PriorBox::evaluate(const HostTensorVector& outputs,
                                 const HostTensorVector& inputs) const
 {
     NGRAPH_OP_SCOPE(v0_PriorBox_evaluate,
-                    return prior_box::evaluate_prior_box(inputs[0], inputs[1], outputs[0], get_attrs()););
+                    return prior_box::evaluate_prior_box(
+                        inputs[0], inputs[1], outputs[0], get_attrs()););
     return false;
 }
