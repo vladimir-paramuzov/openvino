@@ -109,6 +109,15 @@ event::ptr gpu_buffer::copy_from(stream& stream, const void* host_ptr) {
     return ev;
 }
 
+event::ptr gpu_buffer::copy_to(stream& stream, void* host_ptr) {
+    auto& cl_stream = downcast<ocl_stream>(stream);
+    auto ev = stream.create_base_event();
+    cl::Event ev_ocl = std::dynamic_pointer_cast<ocl_event>(ev)->get();
+    cl_stream.get_cl_queue().enqueueReadBuffer(_buffer, false, 0, size(), host_ptr, nullptr, &ev_ocl);
+
+    return ev;
+}
+
 #ifdef ENABLE_ONEDNN_FOR_GPU
 dnnl::memory gpu_buffer::get_onednn_memory(dnnl::memory::desc desc) {
     auto onednn_engine = _engine->get_onednn_engine();
@@ -243,6 +252,10 @@ event::ptr gpu_image2d::copy_from(stream& /* stream */, const void* /* host_ptr 
     throw std::runtime_error("[clDNN] copy_from is not implemented for gpu_image2d");
 }
 
+event::ptr gpu_image2d::copy_to(stream& /* stream */, void* /* host_ptr */) {
+    throw std::runtime_error("[clDNN] copy_to is not implemented for gpu_image2d");
+}
+
 gpu_media_buffer::gpu_media_buffer(ocl_engine* engine,
                                    const layout& new_layout,
                                    shared_mem_params params)
@@ -363,6 +376,19 @@ event::ptr gpu_usm::copy_from(stream& stream, const void* host_ptr) {
     cl_stream.get_usm_helper().enqueue_memcpy(cl_stream.get_cl_queue(),
                                               dst_ptr,
                                               host_ptr,
+                                              _bytes_count,
+                                              true);
+
+    return ev;
+}
+
+event::ptr gpu_usm::copy_to(stream& stream, void* host_ptr) {
+    auto& cl_stream = downcast<ocl_stream>(stream);
+    auto ev = stream.create_base_event();
+    auto src_ptr = get_buffer().get();
+    cl_stream.get_usm_helper().enqueue_memcpy(cl_stream.get_cl_queue(),
+                                              host_ptr,
+                                              src_ptr,
                                               _bytes_count,
                                               true);
 

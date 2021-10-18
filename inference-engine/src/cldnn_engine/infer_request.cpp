@@ -110,44 +110,40 @@ void InferRequest::enqueue() {
         streamID = streamID % numGraphs;
     }
     m_graph = streamGraphs[streamID];
+
+    // here we need some check that everythin is allocated properly. checkBlobs() ???
+
     // set input and output memory from request blob maps
     // into the network object primitives
     std::vector<cldnn::event::ptr> dependencies;
     for (auto& item : _inputs) {
         std::string inputName = item.first;
         Blob::Ptr& inputBlob = item.second;
-        prepare_input(inputName, inputBlob, dependencies);
-        // if (copy_needed)
-        // copy_input();
+        prepare_input(inputName);
+        if (true /*copy_needed*/)
+            dependencies.push_back(copy_input_data(inputBlob, _device_inputs[inputName]));
     }
+
+    for (auto& item : _outputs) {
+        prepare_output(item.first);
+    }
+
+    m_result_events.clear();
+
+    m_network->execute(dependencies);
 
     for (auto& item : _outputs) {
         std::string outputName = item.first;
         Blob::Ptr& outputBlob = item.second;
-        prepare_output(outputName, outputBlob);
+        m_result_events.push_back(m_network->get_primitive_event(outputs_map.at(outputName)));
+        if (1 /*copy_needed*/)
+            m_result_events.push_back(copy_output_data(_device_outputs[outputName], outputBlob));
     }
-
-    internal_outputs.clear();
-    internal_outputs = m_network->execute(dependencies);
-
-    // for (auto& item : _outputs) {
-    //     std::string outputName = item.first;
-    //     Blob::Ptr& outputBlob = item.second;
-    //     if (copy_needed)
-    //          copy_output();
-    // }
 }
 
 void InferRequest::wait() {
-    if (internal_outputs.empty()) {
-        IE_THROW() << "Inference was not started!\n";
-    }
-
-    for (auto& no : _networkOutputs) {
-        Blob::Ptr bptr = _outputs[no.first];
-        std::string outputID = outputs_map.at(no.first);
-        internal_outputs.at(outputID).get_event()->wait();
-        // TODO: wait for copy_output events as well
+    for (auto& e : m_result_events) {
+        e->wait();
     }
 
     // finally collect profiling info
@@ -253,16 +249,26 @@ Blob::Ptr InferRequest::create_host_blob(const TensorDesc& desc, void* mem_ptr) 
     }
 }
 
-void InferRequest::copy_input_data(std::shared_ptr<cldnn::network> network,
-                                        const cldnn::primitive_id &inputName,
-                                        const cldnn::layout& inputLayout,
-                                        const Blob &inputBlob) {
+cldnn::event::ptr InferRequest::copy_input_data(Blob::Ptr blob, cldnn::memory::ptr input_memory) {
     OV_ITT_SCOPED_TASK(itt::domains::CLDNNPlugin, "InferRequest::copy_input_data");
 
-    cldnn::primitive_id internalName = "parameter:" + inputName;
-    auto locked = inputBlob.cbuffer();
+    auto locked = blob->cbuffer();
     auto ptr = locked.as<void*>();
-    network->set_input_data(internalName, network->get_engine().attach_memory(inputLayout, ptr));
+    auto event = input_memory->copy_from(m_network->get_stream(), ptr);
+    return event;
+}
+
+cldnn::event::ptr InferRequest::copy_output_data(cldnn::memory::ptr output_memory, InferenceEngine::Blob::Ptr blob) {
+    OV_ITT_SCOPED_TASK(itt::domains::CLDNNPlugin, "InferRequest::copy_output_data");
+
+    // Technically the code below is not correct, as blob gets unmapped before copy operation is finished
+    // thus the pointer may become invalid
+    // but this copy must happen only for host blobs, so map/unmap doesn't have any effect there and pointer remains valid.
+    // TODO: consider using some better approach
+    auto locked = blob->cbuffer();
+    auto ptr = locked.as<void*>();
+    auto event = output_memory->copy_to(m_network->get_stream(), ptr);
+    return event;
 }
 
 std::map<std::string, InferenceEngineProfileInfo> InferRequest::GetPerformanceCounts() const {
@@ -274,18 +280,17 @@ std::map<std::string, InferenceEngineProfileInfo> InferRequest::GetPerformanceCo
     }
 }
 
-void InferRequest::prepare_input(const cldnn::primitive_id& inputName, Blob::Ptr& inputBlob,
-                                 std::vector<cldnn::event::ptr>& dependencies) {
+void InferRequest::prepare_input(const cldnn::primitive_id& input_name) {
     OV_ITT_SCOPED_TASK(itt::domains::CLDNNPlugin, "InferRequest::prepare_input");
-    auto input_mem = _device_inputs.at(inputName);
-    cldnn::primitive_id internalName = "parameter:" + inputName;
+    auto input_mem = _device_inputs.at(input_name);
+    cldnn::primitive_id internalName = "parameter:" + input_name;
     m_network->set_input_data(internalName, input_mem);
 }
 
-void InferRequest::prepare_output(const cldnn::primitive_id& outputName, Blob::Ptr& outputBlob) {
+void InferRequest::prepare_output(const cldnn::primitive_id& output_name) {
     OV_ITT_SCOPED_TASK(itt::domains::CLDNNPlugin, "InferRequest::prepare_output");
-    auto output_mem = _device_outputs.at(outputName);
-    cldnn::primitive_id internalName = outputs_map[outputName];
+    auto output_mem = _device_outputs.at(output_name);
+    cldnn::primitive_id internalName = outputs_map[output_name];
     m_network->set_output_memory(internalName, output_mem);
 }
 

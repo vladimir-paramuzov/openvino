@@ -60,9 +60,8 @@ private:
 
     InferenceEngine::IStreamsExecutor* streamExecutor = nullptr;
 
-    void prepare_input(const cldnn::primitive_id &inputName, InferenceEngine::Blob::Ptr &inputBlob,
-                       std::vector<cldnn::event::ptr>& dependencies);
-    void prepare_output(const cldnn::primitive_id& outputName, InferenceEngine::Blob::Ptr& outputBlob);
+    void prepare_input(const cldnn::primitive_id &input_name);
+    void prepare_output(const cldnn::primitive_id& output_name);
 
     InferenceEngine::Blob::Ptr create_host_blob(const InferenceEngine::TensorDesc& desc);
     InferenceEngine::Blob::Ptr create_host_blob(const InferenceEngine::TensorDesc& desc, void* mem_ptr);
@@ -70,15 +69,14 @@ private:
 
     cldnn::memory::ptr get_device_memory_for_blob(const InferenceEngine::Blob::Ptr& blob);
 
-    void copy_output_data(cldnn::memory::ptr outputMemory, InferenceEngine::Blob::Ptr bptr);
-    void copy_input_data(std::shared_ptr<cldnn::network> network, const cldnn::primitive_id &inputName,
-                         const cldnn::layout& inputLayout, const InferenceEngine::Blob &inputBlob);
+    cldnn::event::ptr copy_output_data(cldnn::memory::ptr output_memory, InferenceEngine::Blob::Ptr blob);
+    cldnn::event::ptr copy_input_data(InferenceEngine::Blob::Ptr blob, cldnn::memory::ptr input_memory);
 
     void check_blob(std::string name, const InferenceEngine::Blob::Ptr& blob) const;
 
     bool is_input(std::string name) const;
 
-    std::map<cldnn::primitive_id, cldnn::network_output> internal_outputs;
+    std::vector<cldnn::event::ptr> m_result_events;
 };
 
 };  // namespace gpu

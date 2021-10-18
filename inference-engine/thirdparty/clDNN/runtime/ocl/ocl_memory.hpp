@@ -42,6 +42,7 @@ struct gpu_buffer : public lockable_gpu_mem, public memory {
 
     event::ptr copy_from(stream& stream, const memory& other) override;
     event::ptr copy_from(stream& stream, const void* host_ptr) override;
+    event::ptr copy_to(stream& stream, void* host_ptr) override;
 #ifdef ENABLE_ONEDNN_FOR_GPU
     dnnl::memory get_onednn_memory(dnnl::memory::desc /* desc */) override;
 #endif
@@ -66,6 +67,7 @@ struct gpu_image2d : public lockable_gpu_mem, public memory {
 
     event::ptr copy_from(stream& /* stream */, const memory& /* other */) override;
     event::ptr copy_from(stream& /* stream */, const void* /* other */) override;
+    event::ptr copy_to(stream& /* stream */, void* /* other */) override;
 
 protected:
     cl::Image2D _buffer;
@@ -113,6 +115,7 @@ struct gpu_usm : public lockable_gpu_mem, public memory {
 
     event::ptr copy_from(stream& stream, const memory& other) override;
     event::ptr copy_from(stream& stream, const void* host_ptr) override;
+    event::ptr copy_to(stream& stream, void* host_ptr) override;
 
 #ifdef ENABLE_ONEDNN_FOR_GPU
     dnnl::memory get_onednn_memory(dnnl::memory::desc desc) override;
