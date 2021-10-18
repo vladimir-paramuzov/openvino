@@ -7,7 +7,7 @@
 #include <vector>
 #include <memory>
 
-#include "openvino/runtime/gpu/ocl.hpp"
+#include "openvino/runtime/gpu/ocl/ocl.hpp"
 #include "openvino/runtime/core.hpp"
 
 #include <gpu/gpu_config.hpp>
@@ -58,7 +58,7 @@ TEST_F(OVRemoteTensor_Test, DISABLED_smoke_canInputUserTensor) {
 
     // inference using remote tensor
     auto inf_req_shared = exec_net.create_infer_request();
-    auto cldnn_context = exec_net.get_context().as<ov::runtime::gpu::ClContext>();
+    auto cldnn_context = exec_net.get_context().as<ov::runtime::gpu::ocl::ClContext>();
     cl_context ctx = cldnn_context;
     auto ocl_instance = std::make_shared<OpenCL>(ctx);
     cl_int err;
@@ -113,7 +113,7 @@ TEST_F(OVRemoteTensor_Test, DISABLED_smoke_canInferOnUserContext) {
     // inference using remote tensor
     auto ocl_instance = std::make_shared<OpenCL>();
 
-    auto remote_context = ov::runtime::gpu::ClContext(ie, ocl_instance->_context.get());
+    auto remote_context = ov::runtime::gpu::ocl::ClContext(ie, ocl_instance->_context.get());
     auto exec_net_shared = ie.compile_model(function, remote_context);
     auto inf_req_shared = exec_net_shared.create_infer_request();
     inf_req_shared.set_tensor(input->get_friendly_name(), fakeImageData);
@@ -179,7 +179,7 @@ TEST_P(OVRemoteTensorBatched_Test, DISABLED_canInputNV12) {
     auto exec_net_b = ie.compile_model(fn_ptr_remote, CommonTestUtils::DEVICE_GPU,
                 { { ov::ie::GPUConfigParams::KEY_GPU_NV12_TWO_INPUTS, ov::ie::PluginConfigParams::YES} });
     auto inf_req_remote = exec_net_b.create_infer_request();
-    auto cldnn_context = exec_net_b.get_context().as<ov::runtime::gpu::ClContext>();
+    auto cldnn_context = exec_net_b.get_context().as<ov::runtime::gpu::ocl::ClContext>();
     cl_context ctx = cldnn_context.get();
     auto ocl_instance = std::make_shared<OpenCL>(ctx);
     cl_int err;
