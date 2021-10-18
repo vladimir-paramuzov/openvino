@@ -2,13 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-
 #include "ie_metric_helpers.hpp"
-#include <chrono>
-#include <cmath>
-#include <algorithm>
-
-#include "ie_metric_helpers.hpp"
+#include "ie_icore.hpp"
 #include <chrono>
 #include <cmath>
 #include <algorithm>
@@ -19,6 +14,7 @@
 #include "cldnn_infer_request.h"
 #include <threading/ie_executor_manager.hpp>
 #include "cldnn_async_infer_request.h"
+#include "async_infer_request.hpp"
 #include <fstream>
 #include <utility>
 #include <sys/types.h>
@@ -48,7 +44,7 @@ CLDNNExecNetwork::CLDNNExecNetwork(InferenceEngine::CNNNetwork &network, std::sh
     m_config(config),
     m_taskExecutor{ _taskExecutor },
     m_waitExecutor(InferenceEngine::ExecutorManager::getInstance()->getIdleCPUStreamsExecutor({ "GPUWaitExecutor" })) {
-    auto casted_context = std::dynamic_pointer_cast<gpu::ClContext>(context);
+    auto casted_context = std::dynamic_pointer_cast<InferenceEngine::gpu::ClContext>(context);
 
     if (nullptr == casted_context) {
         IE_THROW() << "Invalid remote context";
@@ -65,7 +61,7 @@ CLDNNExecNetwork::CLDNNExecNetwork(InferenceEngine::CNNNetwork &network, std::sh
 
 IInferRequestInternal::Ptr CLDNNExecNetwork::CreateInferRequestImpl(InputsDataMap networkInputs,
                                                                     OutputsDataMap networkOutputs) {
-    OV_ITT_SCOPED_TASK(itt::domains::CLDNNPlugin, "CLDNNExecNetwork::CreateInferRequestImpl");
+    OV_ITT_SCOPED_TASK(itt::domains::CLDNNPlugin, "CLDNNExecNetwork::CreateInferRequestImplLegacy");
     if (m_graphs.empty()) {
         IE_THROW(NetworkNotLoaded);
     }
@@ -80,6 +76,29 @@ IInferRequestInternal::Ptr CLDNNExecNetwork::CreateInferRequestImpl(InputsDataMa
         }
     }
 
+    if (!isNewAPI()) {
+        return CreateInferRequestImplLegacy(networkInputs, networkOutputs);
+    }
+
+    auto ptr = std::make_shared<::gpu::InferRequest>(networkInputs, networkOutputs,
+                                                     std::static_pointer_cast<CLDNNExecNetwork>(shared_from_this()),
+                                                     m_graphs.front());
+    if (m_config.throughput_streams > 1) {
+        ptr->enable_streams();
+    }
+    if (m_config.useProfiling)
+        ptr->enable_profiling();
+
+    if (m_graphs.front()->use_external_queue()) {
+        ptr->enable_external_queue();
+    }
+
+    return ptr;
+}
+
+IInferRequestInternal::Ptr CLDNNExecNetwork::CreateInferRequestImplLegacy(InputsDataMap networkInputs,
+                                                                          OutputsDataMap networkOutputs) {
+    OV_ITT_SCOPED_TASK(itt::domains::CLDNNPlugin, "CLDNNExecNetwork::CreateInferRequestImplLegacy");
     auto ptr = std::make_shared<CLDNNInferRequest>(networkInputs, networkOutputs,
                                                    std::static_pointer_cast<CLDNNExecNetwork>(shared_from_this()));
     if (m_config.throughput_streams > 1) {
@@ -98,12 +117,21 @@ IInferRequestInternal::Ptr CLDNNExecNetwork::CreateInferRequestImpl(InputsDataMa
 
 IInferRequestInternal::Ptr CLDNNExecNetwork::CreateInferRequest() {
     OV_ITT_SCOPED_TASK(itt::domains::CLDNNPlugin, "CLDNNExecNetwork::CreateInferRequest");
-    auto internalRequest = CreateInferRequestImpl(_networkInputs, _networkOutputs);
-    internalRequest->setPointerToExecutableNetworkInternal(shared_from_this());
-    return std::make_shared<CLDNNAsyncInferRequest>(std::static_pointer_cast<CLDNNInferRequest>(internalRequest),
-                                                    m_taskExecutor,
-                                                    m_waitExecutor,
-                                                    _callbackExecutor);
+    if (isNewAPI()) {
+        auto internalRequest = CreateInferRequestImpl(_networkInputs, _networkOutputs);
+        internalRequest->setPointerToExecutableNetworkInternal(shared_from_this());
+        return std::make_shared<::gpu::AsyncInferRequest>(std::static_pointer_cast<::gpu::InferRequest>(internalRequest),
+                                                        m_taskExecutor,
+                                                        m_waitExecutor,
+                                                        _callbackExecutor);
+    } else {
+        auto internalRequest = CreateInferRequestImpl(_networkInputs, _networkOutputs);
+        internalRequest->setPointerToExecutableNetworkInternal(shared_from_this());
+        return std::make_shared<CLDNNAsyncInferRequest>(std::static_pointer_cast<CLDNNInferRequest>(internalRequest),
+                                                        m_taskExecutor,
+                                                        m_waitExecutor,
+                                                        _callbackExecutor);
+    }
 }
 
 std::shared_ptr<ngraph::Function> CLDNNExecNetwork::GetExecGraphInfo() {
@@ -161,6 +189,10 @@ InferenceEngine::Parameter CLDNNExecNetwork::GetMetric(const std::string &name) 
 
 std::shared_ptr<RemoteContext> CLDNNExecNetwork::GetContext() const {
     return m_context;
+}
+
+bool CLDNNExecNetwork::isNewAPI() const {
+    return _plugin->GetCore()->isNewAPI();
 }
 
 };  // namespace CLDNNPlugin
