@@ -30,7 +30,7 @@ protected:
     }
 };
 
-TEST_F(OVRemoteTensor_Test, DISABLED_smoke_canInputUserTensor) {
+TEST_F(OVRemoteTensor_Test, smoke_canInputUserTensor) {
 #if defined(ANDROID)
     GTEST_SKIP();
 #endif
@@ -88,7 +88,7 @@ TEST_F(OVRemoteTensor_Test, DISABLED_smoke_canInputUserTensor) {
     }
 }
 
-TEST_F(OVRemoteTensor_Test, DISABLED_smoke_canInferOnUserContext) {
+TEST_F(OVRemoteTensor_Test, smoke_canInferOnUserContext) {
     auto ie = ov::runtime::Core();
 
     using namespace ov::preprocess;
@@ -298,7 +298,7 @@ protected:
     std::vector<std::shared_ptr<ngraph::Function>> fn_ptrs;
 };
 
-TEST_P(OVRemoteTensorTwoNets_Test, DISABLED_canInferTwoExecNets) {
+TEST_P(OVRemoteTensorTwoNets_Test, canInferTwoExecNets) {
     auto ie = ov::runtime::Core();
 
     std::vector<std::string> outputs;

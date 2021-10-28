@@ -27,23 +27,16 @@ Blob::Ptr InferRequest::GetBlob(const std::string& name) {
     OV_ITT_SCOPED_TASK(itt::domains::CLDNNPlugin, "InferRequest::GetBlob");
     Blob::Ptr blob;
 
-    // Maybe SetBlob can be reused here? Like
-    // if (not allocated)
-    //    blob = allocate();
-    // SetBlob(name, blob);
-    // return blob
+    InputInfo::Ptr foundInput;
+    DataPtr foundOutput;
 
-    if (is_input(name)) {
-        if (_inputs.find(name) == _inputs.end()) {
-            // create blob for input
-            // _inputs[name] = something
-        }
+    bool is_input = findInputAndOutputBlobByName(name, foundInput, foundOutput);
+
+    if (is_input) {
+        get_or_alloc_input(name, foundInput);
         blob = _inputs[name];
     } else {
-        if (_outputs.find(name) == _outputs.end()) {
-            // create blob for output
-            // _output[name] = something
-        }
+        get_or_alloc_output(name, foundOutput);
         blob = _outputs[name];
     }
     return blob;
@@ -56,19 +49,21 @@ void InferRequest::SetBlob(const std::string& name, const Blob::Ptr& data) {
 
     auto remote_ptr = data->as<InferenceEngine::gpu::ClBlob>();
     bool is_remote = remote_ptr != nullptr;
+    cldnn::memory::ptr dev_ptr = nullptr;
     if (is_remote) {
         auto impl = CLDNNPlugin::getBlobImpl(remote_ptr);
         if (!impl->is_allocated()) {
             impl->allocate();
         }
+        dev_ptr = impl->getMemory();
     }
 
     if (is_input(name)) {
+        create_device_input(name, data->getTensorDesc().getPrecision(), dev_ptr);
         _inputs[name] = data;
-        _device_inputs[name] = get_device_memory_for_blob(data);
     } else {
+        create_device_output(name, dev_ptr);
         _outputs[name] = data;
-        _device_outputs[name] = get_device_memory_for_blob(data);
     }
 }
 
@@ -84,16 +79,10 @@ InferRequest::InferRequest(InputsDataMap networkInputs, OutputsDataMap networkOu
         : IInferRequestInternal(networkInputs, networkOutputs)
         , m_useProfiling(false)
         , m_useStreams(false)
-        , m_useExternalQueue(false)
-        , m_graph(graph) {
+        , m_useExternalQueue(false) {
     IE_ASSERT(nullptr != execNetwork);
     streamExecutor = dynamic_cast<InferenceEngine::IStreamsExecutor*>(execNetwork->m_taskExecutor.get());
-
-    if (m_graph == nullptr) {
-        IE_THROW(NetworkNotLoaded) << "null graph pointer is assigned to InferRequest instance";
-    }
-
-    m_network = m_graph->GetNetwork();
+    setGraph(graph);
 }
 
 // ----------------------------------------------------------------------------------------- //
@@ -101,7 +90,6 @@ InferRequest::InferRequest(InputsDataMap networkInputs, OutputsDataMap networkOu
 // ----------------------------------------------------------------------------------------- //
 
 void InferRequest::enqueue() {
-    m_graph->wait(CLDNNPlugin::CLDNNGraph::Stage::EXECUTE);
     int streamID = 0;
     auto& streamGraphs = static_cast<CLDNNPlugin::CLDNNExecNetwork*>(_exeNetwork.get())->m_graphs;
     if (nullptr != streamExecutor) {
@@ -109,9 +97,16 @@ void InferRequest::enqueue() {
         int numGraphs = streamGraphs.size();
         streamID = streamID % numGraphs;
     }
-    m_graph = streamGraphs[streamID];
+    setGraph(streamGraphs[streamID]);
+    m_graph->wait(CLDNNPlugin::CLDNNGraph::Stage::EXECUTE);
 
-    // here we need some check that everythin is allocated properly. checkBlobs() ???
+    // here we need some check that everythin is allocated properly.
+    for (auto& item : _networkInputs) {
+        get_or_alloc_input(item.first, item.second);
+    }
+    for (auto& item : _networkOutputs) {
+        get_or_alloc_output(item.first, item.second);
+    }
 
     // set input and output memory from request blob maps
     // into the network object primitives
@@ -156,8 +151,15 @@ void InferRequest::wait() {
 // ----------------------------------------------------------------------------------------- //
 // ---------------------------- internal utils --------------------------------------------- //
 // ----------------------------------------------------------------------------------------- //
+void InferRequest::setGraph(std::shared_ptr<CLDNNPlugin::CLDNNGraph> graph) {
+    m_graph = graph;
+    if (m_graph == nullptr) {
+        IE_THROW(NetworkNotLoaded) << "null graph pointer is assigned to InferRequest instance";
+    }
+    m_network = m_graph->GetNetwork();
+}
 
-bool InferRequest::is_input(std::string name) const {
+bool InferRequest::is_input(const std::string& name) const {
     InputInfo::Ptr foundInput;
     DataPtr foundOutput;
 
@@ -196,19 +198,30 @@ void InferRequest::check_blob(std::string name, const InferenceEngine::Blob::Ptr
     }
 }
 
-cldnn::memory::ptr InferRequest::get_device_memory_for_blob(const InferenceEngine::Blob::Ptr& blob) {
-    auto remote_ptr = blob->as<InferenceEngine::gpu::ClBlob>();
-    bool is_remote = remote_ptr != nullptr;
-    cldnn::memory::ptr res = nullptr;
-    if (is_remote) {
-        // TODO: extract handle from remote blob and create cldnn::memory on top of it
-        // res = engine.shared_buffer/usm(...);
-    } else {
-        // TODO: allocate device mem
-        // res = engine.allocate_memory(...);
+void InferRequest::create_device_input(const std::string& name, const Precision& prec, cldnn::memory::ptr mem) {
+    auto& inputLayouts = m_graph->GetInputLayouts();
+    auto litr = inputLayouts.find(name);
+    if (litr == inputLayouts.end()) {
+        IE_THROW() << "Input layout for " << name << " is not found";
     }
+    auto input_layout = litr->second;
+    if (prec == Precision::I16 || prec == Precision::U16) {
+        input_layout.data_type = cldnn::data_types::f32;
+    }
+    if (mem)
+        _device_inputs[name] = mem;
+    else
+        _device_inputs[name] = m_graph->GetEngine()->allocate_memory(input_layout);
+}
 
-    return res;
+void InferRequest::create_device_output(const std::string& name, cldnn::memory::ptr mem) {
+    std::string outputID = m_graph->MapOutputName(name);
+    const cldnn::layout output_layout = m_graph->GetNetwork()->get_output_memory(outputID)->get_layout();
+    if (mem)
+        _device_inputs[name] = mem;
+    else
+        _device_outputs[name] = m_graph->GetEngine()->allocate_memory(output_layout);
+    outputs_map[name] = outputID;
 }
 
 Blob::Ptr InferRequest::create_host_blob(const TensorDesc& desc) {
@@ -246,6 +259,26 @@ Blob::Ptr InferRequest::create_host_blob(const TensorDesc& desc, void* mem_ptr) 
     case Precision::U8: return make_shared_blob<uint8_t>(desc, reinterpret_cast<uint8_t*>(mem_ptr));
     case Precision::BOOL: return make_shared_blob<uint8_t>(desc, reinterpret_cast<uint8_t*>(mem_ptr));
     default: IE_THROW(NotImplemented) << "The plugin does not support " << p.name() << " blob precision";
+    }
+}
+
+void InferRequest::get_or_alloc_input(const cldnn::primitive_id& input_name, const InputInfo::Ptr info) {
+    if (_inputs.find(input_name) == _inputs.end()) {
+        const auto& desc = info->getTensorDesc();
+        auto blob = create_host_blob(desc);
+        blob->allocate();
+        _inputs[input_name] = blob;
+        create_device_input(input_name, desc.getPrecision());
+    }
+}
+
+void InferRequest::get_or_alloc_output(const cldnn::primitive_id& output_name, const DataPtr info) {
+    if (_outputs.find(output_name) == _outputs.end()) {
+        const auto& desc = info->getTensorDesc();
+        auto blob = create_host_blob(desc);
+        blob->allocate();
+        _outputs[output_name] = blob;
+        create_device_output(output_name);
     }
 }
 
