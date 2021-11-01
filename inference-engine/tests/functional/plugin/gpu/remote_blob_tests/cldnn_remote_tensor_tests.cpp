@@ -51,10 +51,10 @@ TEST_F(OVRemoteTensor_Test, smoke_canInputUserTensor) {
     auto output = function->get_results().at(0);
     auto fakeImageData = FuncTestUtils::create_and_fill_tensor(input->get_element_type(), input->get_shape());
 
-    inf_req_regular.set_tensor(input->get_friendly_name(), fakeImageData);
+    inf_req_regular.set_tensor(input, fakeImageData);    
 
     inf_req_regular.infer();
-    auto output_tensor_regular = inf_req_regular.get_tensor(ngraph::op::util::create_ie_output_name(output->input_value(0)));
+    auto output_tensor_regular = inf_req_regular.get_tensor(output);
 
     // inference using remote tensor
     auto inf_req_shared = exec_net.create_infer_request();
@@ -72,10 +72,10 @@ TEST_F(OVRemoteTensor_Test, smoke_canInputUserTensor) {
     }
 
     auto cldnn_tensor = cldnn_context.create_tensor(input->get_element_type(), input->get_shape(), shared_buffer);
-    inf_req_shared.set_tensor(input->get_friendly_name(), cldnn_tensor);
+    inf_req_shared.set_tensor(input, cldnn_tensor);
 
     inf_req_shared.infer();
-    auto output_tensor_shared = inf_req_shared.get_tensor(ngraph::op::util::create_ie_output_name(output->input_value(0)));
+    auto output_tensor_shared = inf_req_shared.get_tensor(output);
 
     // compare results
     {
@@ -105,10 +105,10 @@ TEST_F(OVRemoteTensor_Test, smoke_canInferOnUserContext) {
     // regular inference
     auto inf_req_regular = exec_net_regular.create_infer_request();
     auto fakeImageData = FuncTestUtils::create_and_fill_tensor(input->get_element_type(), input->get_shape());
-    inf_req_regular.set_tensor(input->get_friendly_name(), fakeImageData);
+    inf_req_regular.set_tensor(input, fakeImageData);
 
     inf_req_regular.infer();
-    auto output_tensor_regular = inf_req_regular.get_tensor(ngraph::op::util::create_ie_output_name(output->input_value(0)));
+    auto output_tensor_regular = inf_req_regular.get_tensor(output);
 
     // inference using remote tensor
     auto ocl_instance = std::make_shared<OpenCL>();
@@ -116,10 +116,10 @@ TEST_F(OVRemoteTensor_Test, smoke_canInferOnUserContext) {
     auto remote_context = ov::runtime::gpu::ocl::ClContext(ie, ocl_instance->_context.get());
     auto exec_net_shared = ie.compile_model(function, remote_context);
     auto inf_req_shared = exec_net_shared.create_infer_request();
-    inf_req_shared.set_tensor(input->get_friendly_name(), fakeImageData);
+    inf_req_shared.set_tensor(input, fakeImageData);
 
     inf_req_shared.infer();
-    auto output_tensor_shared = inf_req_shared.get_tensor(ngraph::op::util::create_ie_output_name(output->input_value(0)));
+    auto output_tensor_shared = inf_req_shared.get_tensor(output);
 
     // compare results
     {
@@ -301,7 +301,7 @@ protected:
 TEST_P(OVRemoteTensorTwoNets_Test, canInferTwoExecNets) {
     auto ie = ov::runtime::Core();
 
-    std::vector<std::string> outputs;
+    ov::ResultVector outputs;
     std::vector<ov::runtime::InferRequest> irs;
     std::vector<std::vector<uint8_t>> ref;
     std::vector<int> outElementsCount;
@@ -316,18 +316,18 @@ TEST_P(OVRemoteTensorTwoNets_Test, canInferTwoExecNets) {
         auto output = fn_ptrs[i]->get_results().at(0);
 
         for (int j = 0; j < num_streams * num_requests; j++) {
-            outputs.push_back(ngraph::op::util::create_ie_output_name(output->input_value(0)));
+            outputs.push_back(output);
 
             auto inf_req = exec_net.create_infer_request();
             irs.push_back(inf_req);
 
             auto tensor = FuncTestUtils::create_and_fill_tensor(input->get_element_type(), input->get_shape());
-            inf_req.set_tensor(input->get_friendly_name(), tensor);
+            inf_req.set_tensor(input, tensor);
 
             outElementsCount.push_back(
                     std::accumulate(begin(fn_ptrs[i]->get_output_shape(0)), end(fn_ptrs[i]->get_output_shape(0)), 1,
                                     std::multiplies<size_t>()));
-            const auto in_tensor = inf_req.get_tensor(input->get_friendly_name());
+            const auto in_tensor = inf_req.get_tensor(input);
             const auto tensorSize = in_tensor.get_byte_size();
             const auto inBlobBuf = static_cast<uint8_t*>(in_tensor.data());
             std::vector<uint8_t> inData(inBlobBuf, inBlobBuf + tensorSize);
