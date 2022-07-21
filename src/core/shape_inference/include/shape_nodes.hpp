@@ -23,7 +23,7 @@ void shape_infer(const ov::opset1::Reshape* op, const std::vector<T> &input_shap
     output_shape.resize(output_pattern.size());
 
     auto output_rank = input_shapes[1].size() == 0 ? 0 : input_shapes[1][0];
-    if (output_rank == 0 && !output_shape.empty()) {
+    if (output_rank == 0 && output_shape.size() != 0) {
         output_pattern.clear();
         OPENVINO_ASSERT(output_pattern.size() == 1);
         NODE_VALIDATION_CHECK(op,
@@ -56,7 +56,7 @@ void shape_infer(const ov::opset1::Reshape* op, const std::vector<T> &input_shap
     }
     size_t input_product(1);
     for (size_t i = 0; i < input_shape.size(); ++i) {
-        if (i < static_cast<int64_t>(output_pattern.size()) && output_pattern[i] == 0)
+        if (i < static_cast<size_t>(output_pattern.size()) && output_pattern[i] == 0)
             continue;
         input_product = input_shape[i].get_length() * input_product;
     }
@@ -91,13 +91,6 @@ void shape_infer(const ov::opset1::Reshape* op, const std::vector<T> &input_shap
                           output_shape,
                           " is incompatible with input shape ",
                           input_shape);
-}
-
-
-template<>
-void shape_infer<ov::PartialShape>(const ov::opset1::Reshape* op, const std::vector<ov::PartialShape> &input_shapes, std::vector<ov::PartialShape> &output_shapes,
-                 const std::map<size_t, std::shared_ptr<ngraph::runtime::HostTensor>>& constant_data) {
-    OPENVINO_UNREACHABLE("Reshape shape inference is not yet unified for use with PartialShapes");
 }
 
 template<class T>
@@ -209,4 +202,3 @@ void shape_infer(const ov::opset3::ShapeOf* op,
     NODE_VALIDATION_CHECK(op, input_shapes.size() == 1 && output_shapes.size() == 1);
     shape_of_shape_infer(input_shapes[0], output_shapes[0]);
 }
-
