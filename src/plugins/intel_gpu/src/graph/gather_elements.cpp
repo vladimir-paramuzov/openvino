@@ -3,6 +3,7 @@
 //
 
 #include "gather_elements_inst.h"
+#include "gather_elements_shape_inference.hpp"
 
 #include "primitive_type_base.h"
 #include "intel_gpu/runtime/error_handler.hpp"
@@ -30,6 +31,31 @@ layout gather_elements_inst::calc_output_layout(gather_elements_node const& node
     auto output_format = op->output_format;
     // calculate initial output shape
     return layout(output_type, output_format, output_shape);
+}
+
+template<typename ShapeType>
+std::vector<layout> gather_elements_inst::calc_output_layouts(gather_elements_node const& node, const kernel_impl_params& impl_param) {
+    auto desc = node.get_primitive();
+    auto input_layout = node.input().get_output_layout();
+
+    auto output_type = input_layout.data_type;
+    if (node.has_fused_primitives()) {
+        output_type = node.get_fused_output_layout().data_type;
+    }
+
+    ov::op::v6::GatherElements op;
+    op.set_axis(desc->axis);
+
+    std::vector<ShapeType> output_shapes = {ShapeType()};
+    std::vector<ShapeType> input_shapes = {
+        impl_param.input_layouts[0].get_partial_shape(),
+        impl_param.input_layouts[1].get_partial_shape()
+    };
+    ov::op::v6::shape_infer(&op, input_shapes, output_shapes);
+
+    format output_format = format::adjust_to_rank(input_layout.format, output_shapes[0].size());
+
+    return { layout{output_shapes[0], output_type, output_format} };
 }
 
 std::string gather_elements_inst::to_string(gather_elements_node const& node) {
