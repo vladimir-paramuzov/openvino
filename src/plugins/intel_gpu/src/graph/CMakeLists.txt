@@ -36,7 +36,9 @@ target_include_directories(${TARGET_NAME} PUBLIC
                                           $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>)
 
 target_compile_options(${TARGET_NAME} PRIVATE
-  $<$<CONFIG:Release>:$<IF:$<CXX_COMPILER_ID:MSVC>,/Os,-Os>>)
+$<$<CONFIG:Release>:$<IF:$<CXX_COMPILER_ID:MSVC>,/Os,-Os>>)
+add_sycl_to_target(TARGET ${TARGET_NAME} SOURCES ${SYCL_SOURCES})
+# target_compile_options(${TARGET_NAME} PUBLIC -fsycl-targets=spir64_gen "-Xs -device *") # Native API failed. Native API returns: -46 (PI_ERROR_INVALID_KERNEL_NAME)
 
 if(OV_COMPILER_IS_INTEL_LLVM)
     add_sycl_to_target(TARGET ${TARGET_NAME} SOURCES ${SYCL_SOURCES})
@@ -74,6 +76,6 @@ ov_install_static_lib(${TARGET_NAME} ${OV_CPACK_COMP_CORE})
 if(ENABLE_SSE42)
   ov_sse42_optimization_flags(sse4_2_flags)
   set_source_files_properties(impls/cpu/detection_output.cpp PROPERTIES
-    COMPILE_FLAGS "${sse4_2_flags}"
+    COMPILE_FLAGS "${sse4_2_flags} -xSSE4.1"
     COMPILE_DEFINITIONS "HAVE_SSE")
 endif()

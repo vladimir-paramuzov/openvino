@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "intel_gpu/primitives/fully_connected.hpp"
 
 namespace cldnn {
 namespace sycl {
@@ -15,6 +16,8 @@ namespace detail {
     struct attach_##prim##_sycl { \
         attach_##prim##_sycl();   \
     }
+
+REGISTER_SYCL_IMPL(fully_connected);
 
 #undef REGISTER_SYCL_IMPL
 
