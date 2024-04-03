@@ -232,9 +232,11 @@ void primitive_inst::check_memory_to_set(const memory& mem, const layout& layout
 
 event::ptr primitive_inst::set_output_memory(memory::ptr mem_new, bool check, size_t idx) {
     auto& eng = _network.get_engine();
+    _max_output_layout_count = mem_new->count();
     // skip all the buzz if no action actually required
     event::ptr ev = nullptr;
     if (_outputs[idx] && eng.is_the_same_buffer(*mem_new, *_outputs[idx])) {
+        _outputs[idx] = mem_new;
         return get_network().get_stream().create_user_event(true);
     }
 

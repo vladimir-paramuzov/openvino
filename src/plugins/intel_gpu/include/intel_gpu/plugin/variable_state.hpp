@@ -11,6 +11,10 @@
 #include <functional>
 #include <unordered_map>
 
+namespace cldnn {
+struct network;
+}
+
 namespace ov {
 namespace intel_gpu {
 class RemoteContextImpl;
@@ -26,6 +30,7 @@ struct VariableStateInfo {
     cldnn::layout m_layout;
     ov::element::Type m_user_specified_type;
     std::set<const cldnn::primitive*> m_primitives;
+    std::shared_ptr<cldnn::network> m_get_state_executor;
 };
 
 class VariableStateBase : public ov::IVariableState {
@@ -75,6 +80,7 @@ protected:
     std::shared_ptr<cldnn::ShapePredictor> m_shape_predictor;
     cldnn::memory::ptr m_memory = nullptr;
     size_t actual_size = 0;
+    std::shared_ptr<cldnn::network> m_get_state_executor = nullptr;
 
     const cldnn::layout m_initial_layout;
 

@@ -4,6 +4,7 @@
 
 #include "intel_gpu/plugin/variable_state.hpp"
 #include "intel_gpu/primitives/read_value.hpp"
+#include "intel_gpu/runtime/utils.hpp"
 #include "openvino/util/file_util.hpp"
 
 #include "intel_gpu/primitives/data.hpp"
@@ -32,6 +33,7 @@
 #include "condition_inst.h"
 #include "loop_inst.h"
 #include "assign_inst.h"
+#include "reorder_inst.h"
 #include "read_value_inst.h"
 #include "reshape_inst.h"
 #include "kv_cache_inst.h"
@@ -630,7 +632,7 @@ std::vector<event::ptr> network::set_output_memory(const primitive_id& id, memor
         if (!prim->is_dynamic() && mem_new && prim->output_memory_ptr())
             mem = eng.reinterpret_buffer(*mem_new, prim->output_memory().get_layout());
 
-        ret_ev.push_back(prim->set_output_memory(mem));
+        ret_ev.push_back(prim->set_output_memory(mem, !prim->is_dynamic()));
         if (!_reset_arguments &&
             (prim->type() != cldnn::data::type_id() && !(prim->type() == cldnn::mutable_data::type_id() && prim->dependencies().empty()))) {
             prim->set_arguments();
@@ -1416,11 +1418,26 @@ const ov::intel_gpu::VariablesInfoMap& network::get_variables_info() const {
     return _variables_state_info;
 }
 
+std::shared_ptr<network> network::get_state_reorder_executor(const layout& variable_layout, ov::element::Type user_specified_type) {
+    size_t hash = hash_combine(variable_layout.hash(), user_specified_type.hash());
+    if (_state_reorder_excutors.find(hash) == _state_reorder_excutors.end()) {
+        topology t;
+        t.add(input_layout("in", variable_layout));
+        t.add(reorder("out", input_info("in"), format::get_default_format(variable_layout.get_rank()), user_specified_type, ""));
+        _state_reorder_excutors[hash] = network::build_network(_engine, t, _config);
+    }
+
+    return _state_reorder_excutors.at(hash);
+}
+
 void network::set_variables_state_info(const std::string& variable_id,
                                        const layout& variable_layout,
                                        ov::element::Type user_specified_type,
                                        const primitive* p) {
-    _variables_state_info.emplace(variable_id, ov::intel_gpu::VariableStateInfo{variable_id, variable_layout, user_specified_type});
+    auto info = ov::intel_gpu::VariableStateInfo{variable_id, variable_layout, user_specified_type};
+    auto out_type = user_specified_type != ov::element::undefined ? user_specified_type : ov::element::Type(variable_layout.data_type);
+    info.m_get_state_executor = get_state_reorder_executor(variable_layout, out_type);
+    _variables_state_info.emplace(variable_id, info);
 
     _variables_state_info.at(variable_id).m_primitives.insert(p);
 }

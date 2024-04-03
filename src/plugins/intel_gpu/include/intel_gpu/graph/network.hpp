@@ -248,6 +248,7 @@ private:
                                     // but '_local_net_id' is unique only in each intel_gpu::Graph.
 
     std::unordered_map<primitive_id, std::shared_ptr<primitive_inst>> _primitives;
+    std::unordered_map<size_t, std::shared_ptr<network>> _state_reorder_excutors;
     std::vector<shared_mem_type> _in_out_shared_mem_types;
     std::vector<std::shared_ptr<primitive_inst>> _inputs;
     std::vector<std::shared_ptr<primitive_inst>> _outputs;
@@ -280,6 +281,7 @@ private:
     void calculate_weights_cache_capacity();
     output_chains_map::iterator add_output_chain(std::shared_ptr<primitive_inst>& p_inst);
     void set_variables_state_info(const std::string& variable_id, const layout& variable_layout, ov::element::Type user_specified_type, const primitive* p);
+    std::shared_ptr<network> get_state_reorder_executor(const layout& variable_layout, ov::element::Type user_specified_type);
 
 #ifdef GPU_DEBUG_CONFIG
     int64_t iteration = 0;

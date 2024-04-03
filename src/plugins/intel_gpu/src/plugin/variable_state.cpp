@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include "intel_gpu/plugin/usm_host_tensor.hpp"
 #include "openvino/core/type/element_type.hpp"
 #include "openvino/runtime/make_tensor.hpp"
 #include "intel_gpu/plugin/remote_context.hpp"
@@ -10,6 +11,7 @@
 #include "intel_gpu/plugin/variable_state.hpp"
 #include "intel_gpu/runtime/memory_caps.hpp"
 #include "intel_gpu/runtime/layout.hpp"
+#include "intel_gpu/graph/network.hpp"
 #include "intel_gpu/runtime/debug_configuration.hpp"
 
 #include <memory>
@@ -22,6 +24,7 @@ VariableState::VariableState(const VariableStateInfo& info, RemoteContextImpl::P
     , m_layout(info.m_layout)
     , m_user_specified_type(info.m_user_specified_type)
     , m_shape_predictor(shape_predictor)
+    , m_get_state_executor(info.m_get_state_executor)
     , m_initial_layout(info.m_layout) {
     update_device_buffer();
 }
@@ -91,9 +94,17 @@ ov::element::Type VariableState::get_user_specified_type() const {
 
 ov::SoPtr<ov::ITensor> VariableState::get_state() const {
     auto tensor = m_context->create_host_tensor(get_user_specified_type(), m_memory->get_layout().get_shape());
+    if (m_get_state_executor) {
+        if (auto usm = std::dynamic_pointer_cast<USMHostTensor>(tensor._ptr)) {
+            m_get_state_executor->set_input_data("in", m_memory);
+            m_get_state_executor->set_output_memory("out", usm->get_impl()->get_memory());
+            auto res = m_get_state_executor->execute({});
+            res.at("out").get_memory();
+            return tensor;
+        }
+    }
 
     convert_and_copy(m_memory, tensor._ptr.get(), m_context->get_engine().get_service_stream());
-
     return tensor;
 }
 
