@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include "intel_gpu/op/placeholder.hpp"
+#include "intel_gpu/plugin/program_builder.hpp"
+#include "openvino/core/model.hpp"
+#include "openvino/op/parameter.hpp"
 #include "openvino/runtime/system_conf.hpp"
 #include "openvino/runtime/threading/cpu_streams_info.hpp"
 
@@ -188,6 +192,55 @@ program::program(engine& engine_ref,
 }
 
 program::program(engine& engine_ref,
+                 std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map,
+                 const ExecutionConfig& config,
+                 std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
+                 std::shared_ptr<ICompilationContext> compilation_context,
+                 bool is_internal,
+                 bool no_optimizations,
+                 bool is_body_program)
+    : _engine(engine_ref),
+      _stream(_engine.create_stream(config)),
+      _config(config),
+      _task_executor(std::move(task_executor)),
+      processing_order(),
+      is_internal(is_internal),
+      _is_body_program(is_body_program),
+      _compilation_context(compilation_context) {
+    _config.apply_user_properties(_engine.get_device_info());
+    init_primitives();
+    GPU_DEBUG_INFO << "Program config\n" << config.to_string();
+    init_program();
+    prepare_nodes(node_prim_map);
+    program_node::reset_unique_id();
+
+    if (no_optimizations) {
+        init_graph();
+    } else {
+        build_program(is_internal);
+        if (_is_body_program) {
+            // To skip empty if (condition) subgraph
+            bool can_be_optimized = true;
+            for (auto& node : processing_order) {
+                if (node->is_type<input_layout>()) {
+                    continue;
+                } else if (node->is_type<data>()) {
+                    continue;
+                } else if (node->is_output() && node->is_type<reorder>() && !node->has_fused_primitives() &&
+                      node->get_input_layout(0).data_type == node->get_output_layouts(false)[0].data_type &&
+                      node->get_input_layout(0).format == node->get_output_layouts(false)[0].format &&
+                      node->get_input_layout(0).get_partial_shape().size() == node->get_output_layouts(false)[0].get_partial_shape().size()) {
+                    continue;
+                }
+                can_be_optimized = false;
+                break;
+            }
+            this->_can_be_optimized = can_be_optimized;
+        }
+    }
+}
+
+program::program(engine& engine_ref,
                  std::set<std::shared_ptr<program_node>> const& nodes,
                  const ExecutionConfig& config,
                  std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
@@ -295,6 +348,17 @@ program::ptr program::build_program(engine& engine,
                                     bool no_optimizations,
                                     bool is_body_program) {
     return std::make_shared<program>(engine, topology, config, nullptr, nullptr, is_internal, no_optimizations, is_body_program);
+}
+
+program::ptr program::build_program(engine& engine,
+                                    std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map,
+                                    const ExecutionConfig& config,
+                                    std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
+                                    std::shared_ptr<ICompilationContext> compilation_context,
+                                    bool is_internal,
+                                    bool no_optimizations,
+                                    bool is_body_program) {
+    return std::make_shared<program>(engine, node_prim_map, config, task_executor, compilation_context, is_internal, no_optimizations, is_body_program);
 }
 
 program::ptr program::build_program(engine& engine,
@@ -436,6 +500,35 @@ void program::prepare_nodes(topology const& topology) {
         }
     }
 }
+
+// create all nodes from topology primitives, add dependencies among them and create inputs list
+void program::prepare_nodes(std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map) {
+    for (const auto& kv : node_prim_map) {
+        get_or_create(kv.second);
+    }
+    for (const auto& kv : node_prim_map) {
+        auto node_ptr = nodes_map.count(kv.second->id) == 1 ? nodes_map.at(kv.second->id) : nullptr;
+        OPENVINO_ASSERT(node_ptr != nullptr, "NULL pointer in nodes_map.");
+        auto ov_node = kv.first;
+
+        for (size_t i = 0; i < ov_node->get_input_size(); i++) {
+            auto dep = ov_node->get_input_node_ptr(i);
+            if (ov::is_type<ov::intel_gpu::op::Placeholder>(dep))
+                continue;
+            auto dep_prim = node_prim_map.at(dep);
+            OPENVINO_ASSERT(nodes_map.count(dep_prim->id) > 0, "[GPU] Dependency not found!");
+            auto dep_node = nodes_map.at(dep_prim->id);
+            node_ptr->dependencies.push_back({dep_node.get(), ov_node->get_input_source_output(i).get_index()});
+
+            dep_node->users.push_back(node_ptr.get());
+        }
+
+        if (kv.first->get_input_size() == 0) {
+            inputs.push_back(node_ptr.get());
+        }
+    }
+}
+
 
 // add node's dependecies from its primitive dependencies
 void program::add_node_dependencies(program_node* node) {

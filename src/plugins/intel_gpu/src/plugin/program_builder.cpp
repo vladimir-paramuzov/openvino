@@ -164,7 +164,7 @@ std::shared_ptr<cldnn::program> ProgramBuilder::build(const std::vector<std::sha
     cldnn::program::ptr program;
     try {
         program = cldnn::program::build_program(m_engine,
-                                                *m_topology,
+                                                m_node_prim_map,
                                                 m_config,
                                                 get_task_executor(),
                                                 get_compilation_context(),
@@ -314,6 +314,9 @@ void ProgramBuilder::add_primitive(const ov::Node& op, std::shared_ptr<cldnn::pr
     for (auto& alias : aliases) {
         primitive_ids[alias] = prim_id;
     }
+
+    OPENVINO_ASSERT(m_node_prim_map.find(&op) == m_node_prim_map.end(), "[GPU] ", op.get_friendly_name(), " is already converted. 1:1 mapping is expected");
+    m_node_prim_map[&op] = prim;
 
     m_topology->add_primitive(prim);
 }

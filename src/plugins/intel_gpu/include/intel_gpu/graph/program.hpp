@@ -140,6 +140,15 @@ public:
             bool is_body_program = false);
 
     program(engine& engine_ref,
+            std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map,
+            const ExecutionConfig& config,
+            std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
+            std::shared_ptr<ICompilationContext> compilation_context,
+            bool is_internal = false,
+            bool no_optimizations = false,
+            bool is_body_program = false);
+
+    program(engine& engine_ref,
             std::set<std::shared_ptr<program_node>> const& nodes,
             const ExecutionConfig& config,
             std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
@@ -243,11 +252,22 @@ public:
     uint32_t get_id() const { return prog_id; }
 
     static ptr build_program(engine& engine,
+                             std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map,
+                             const ExecutionConfig& config,
+                             std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
+                             std::shared_ptr<ICompilationContext> compilation_context,
+                             bool is_internal = false,
+                             bool no_optimizations = false,
+                             bool is_body_program = false);
+
+    static ptr build_program(engine& engine,
                              const topology& topology,
                              const ExecutionConfig& config,
                              bool is_internal = false,
                              bool no_optimizations = false,
                              bool is_body_program = false);
+
+
     static ptr build_program(engine& engine,
                              const topology& topology,
                              const ExecutionConfig& config,
@@ -323,6 +343,7 @@ private:
     */
     /* build nodes internal structure based on topology */
     void prepare_nodes(topology const& topology);
+    void prepare_nodes(std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map);
     /* build nodes internal structure based on the subset of nodes of other program  (used in propagate_constants) */
     void prepare_nodes(std::set<std::shared_ptr<program_node>> const& nodes);
     void add_node_dependencies(program_node* node_ptr);

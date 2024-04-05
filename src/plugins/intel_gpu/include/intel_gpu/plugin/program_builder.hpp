@@ -155,6 +155,7 @@ private:
     static std::mutex m_mutex;
 
     std::shared_ptr<cldnn::topology> m_topology;
+    std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>> m_node_prim_map;
     CustomLayerMap m_custom_layers;
 
     bool allow_new_shape_infer = false;
