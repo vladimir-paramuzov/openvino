@@ -117,12 +117,7 @@ std::shared_ptr<cldnn::program> ProgramBuilder::get_compiled_program() const {
     return m_program;
 }
 
-void ProgramBuilder::prepare_build() {
-    m_topology.reset(new cldnn::topology());
-}
-
 void ProgramBuilder::cleanup_build() {
-    m_topology.reset();
     #if defined(__unix__) && !defined(__ANDROID__)
     //  NOTE: In linux, without malloc_trim, an amount of the memory used by compilation is not being returned to system thought they are freed.
     //  (It is at least 500 MB when we perform parallel compilation)
@@ -152,7 +147,6 @@ std::shared_ptr<cldnn::program> ProgramBuilder::build(const std::vector<std::sha
     m_config.set_property(ov::intel_gpu::optimize_data(true));
     m_config.set_property(ov::intel_gpu::allow_new_shape_infer(allow_new_shape_infer));
 
-    prepare_build();
     {
         GPU_DEBUG_DEFINE_MEM_LOGGER("CreateSingleLayerPrimitives");
         for (const auto& op : ops) {
@@ -186,13 +180,12 @@ bool ProgramBuilder::is_op_supported(const std::shared_ptr<ov::Node>& op) {
         // as is_op_supported method is called for each operation separately
         // So we just ensure that inputs count is valid for given operation
         EnableQueryMode();
-        // Creating topology object for each operation is supposed to be more time-consuming than
+        // Conversion to primitive for each operation is supposed to be more time-consuming than
         // simple check by op type, but it has 2 big advantages:
         // 1. Code reuse. We don't need to have separate white-list of supported operations or
         //    add any ugly macro/templates to apply single function to multiple cases.
         // 2. We also check parameters of each operation, which means we have more
         //    reliable results of QueryNetwork call.
-        prepare_build();
         allow_new_shape_infer = requires_new_shape_infer(op);
         CreateSingleLayerPrimitive(op);
         cleanup_build();
@@ -286,8 +279,6 @@ void ProgramBuilder::init_profile_info(const cldnn::primitive& prim) {
 }
 
 void ProgramBuilder::add_primitive(const ov::Node& op, std::shared_ptr<cldnn::primitive> prim, std::vector<std::string> aliases) {
-    OPENVINO_ASSERT(m_topology != nullptr, "[GPU] Invalid ProgramBuilder builder state: topology is nullptr");
-
     prim->origin_op_name = op.get_friendly_name();
     prim->origin_op_type_name = op.get_type_name();
 
@@ -317,8 +308,6 @@ void ProgramBuilder::add_primitive(const ov::Node& op, std::shared_ptr<cldnn::pr
 
     OPENVINO_ASSERT(m_node_prim_map.find(&op) == m_node_prim_map.end(), "[GPU] ", op.get_friendly_name(), " is already converted. 1:1 mapping is expected");
     m_node_prim_map[&op] = prim;
-
-    m_topology->add_primitive(prim);
 }
 
 bool ProgramBuilder::requires_new_shape_infer(const std::shared_ptr<ov::Node>& op) const {

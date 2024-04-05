@@ -6,22 +6,21 @@
 #include <vector>
 #include <functional>
 #include "primitive.hpp"
-#include "intel_gpu/graph/topology.hpp"
 #include "intel_gpu/graph/program.hpp"
 
 namespace cldnn {
 
 ///
-/// @brief Adds primitive which performs recurrent execution of the topology.
+/// @brief Adds primitive which performs recurrent execution of the program.
 ///
 /// @details
-/// @n   The body topology for recurrent execution is described in the body
-/// @n   The execution of the body topology iterates through the data in the given axis.
+/// @n   The body program for recurrent execution is described in the body
+/// @n   The execution of the body program iterates through the data in the given axis.
 /// @n   Note: that only loops with fixed iteration count are being validated and supported currently.
 /// @n
 /// @n\b Example:
 /// \code{.cpp}
-/// topology body(
+/// program body(
 ///     data("eltwise_operand", operand_mem),
 ///     eltwise("eltwise", "input", "eltwise_operand", eltwise_mode::sum)
 /// );
@@ -33,7 +32,7 @@ namespace cldnn {
 ///     loop::backedge_mapping("eltwise", "input")
 /// };
 ///
-/// topology topology(
+/// program program(
 ///     input_layout("input", input_mem.get_layout()),
 ///     input_layout("trip_count", trip_count_mem.get_layout()),
 ///     input_layout("initial_condition", initial_condition_mem.get_layout()),
@@ -43,7 +42,7 @@ namespace cldnn {
 ///             input_primitive_maps, output_primitive_maps, back_edges)
 /// );
 ///
-/// network network(engine, topology);
+/// network network(engine, program);
 /// network.set_input_data("input", input_mem);
 /// network.set_input_data("trip_count", trip_count_mem);
 /// network.set_input_data("initial_condition", initial_condition_mem);
@@ -56,8 +55,8 @@ struct loop : public primitive_base<loop> {
              max_num_iterations(0) {}
 
     struct io_primitive_map {
-        /// @brief Constructs a mapping from external input/output primitive to input/output primitive in body topology
-        ///         or a mapping from output of body topology to input of body topology for the next iteration.
+        /// @brief Constructs a mapping from external input/output primitive to input/output primitive in body program
+        ///         or a mapping from output of body program to input of body program for the next iteration.
         /// @param external_id Primitive id of input of loop or output of body network.
         /// @param internal_id Primitive id of input of body network.
         /// @param axis Axis to iterate through. Negative value means the axis will not iterate through and start, end, stride arguments will be ignored.
@@ -73,8 +72,8 @@ struct loop : public primitive_base<loop> {
             end(end),
             stride(stride) {}
 
-        /// @brief Constructs a mapping from external input/output primitive to input/output primitive in body topology
-        ///         or a mapping from output of body topology to input of body topology for the next iteration.
+        /// @brief Constructs a mapping from external input/output primitive to input/output primitive in body program
+        ///         or a mapping from output of body program to input of body program for the next iteration.
         /// @param external_id Primitive id of input of loop or output of body network.
         /// @param internal_id Primitive id of input of body network.
         /// @param axis Axis to iterate through. Negative value means the axis will not iterate through and start, end, stride arguments will be ignored.
@@ -140,10 +139,10 @@ struct loop : public primitive_base<loop> {
     };
 
     struct backedge_mapping {
-        /// @brief Constructs a mapping from output of body topology to input of body topology for the next iteration
+        /// @brief Constructs a mapping from output of body program to input of body program for the next iteration
         ///
-        /// @param from Output data primitive id of body topology
-        /// @param to Input data primitive id of body topology
+        /// @param from Output data primitive id of body program
+        /// @param to Input data primitive id of body program
         backedge_mapping(primitive_id from, primitive_id to)
             : from(from), to(to) {}
         backedge_mapping() {}
@@ -166,10 +165,10 @@ struct loop : public primitive_base<loop> {
     /// @param id This primitive id.
     /// @param inputs Input data primitive ids.
     /// @param body_program body program to be recurrently executed.
-    /// @param trip_count_id Data primitive id in external topology specifying maximum number of iterations.
+    /// @param trip_count_id Data primitive id in external program specifying maximum number of iterations.
     ///                      Its data primitive should have 1 integer element. Negative value means infinite
     ///                      number of iteration.
-    /// @param first_execution_condition_id Data primitive id in external topology specifying initial execution
+    /// @param first_execution_condition_id Data primitive id in external program specifying initial execution
     ///                                       condition. Its data primitive should have 1 integer element. Zero means
     ///                                       loop will not be executed, otherwise loop will be executed.
     /// @param num_iteration_id mutable_data primitive id to get the actual number of loop iterations.
@@ -181,7 +180,7 @@ struct loop : public primitive_base<loop> {
     ///                               loop will not be executed, otherwise loop will be executed.  If body_execution_condition_id
     ///                               is specified but body does not have data whose primitive id is same as body_execution_condition_id,
     ///                               data primitive will be added in the body network.
-    /// @param primitive_map Rules to map input of loop or output of body topology to input of the body topology
+    /// @param primitive_map Rules to map input of loop or output of body program to input of the body program
     /// @param back_edges Output data primitive id.
     /// @param output_padding     Optional padding for output from primitive.
     loop(const primitive_id& id,
@@ -214,10 +213,10 @@ struct loop : public primitive_base<loop> {
     /// @brief Body program to be recurrently executed.
     program::ptr body_program;
 
-    /// @brief Data primitive id in external topology specifying maximum number of iterations.
+    /// @brief Data primitive id in external program specifying maximum number of iterations.
     primitive_id trip_count_id;
 
-    /// @brief Data primitive id in external topology specifying initial execution condition.
+    /// @brief Data primitive id in external program specifying initial execution condition.
     primitive_id first_execution_condition_id;
 
     /// @brief mutable_data primitive id to get the actual number of loop iterations.
@@ -229,7 +228,7 @@ struct loop : public primitive_base<loop> {
     /// @brief Data primitive id in the body network to store execution condition
     primitive_id body_execution_condition_id;
 
-    /// @brief Rules to map input or output data of loop layer onto input or output data of body topology.
+    /// @brief Rules to map input or output data of loop layer onto input or output data of body program.
     std::vector<io_primitive_map> input_primitive_maps;
     std::vector<io_primitive_map> output_primitive_maps;
 

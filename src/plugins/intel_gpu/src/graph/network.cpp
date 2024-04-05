@@ -413,13 +413,6 @@ network::network(program::ptr program, const ExecutionConfig& config, stream::pt
 }
 
 network::network(engine& engine,
-                 const topology& topo,
-                 const ExecutionConfig& config,
-                 bool is_internal,
-                 std::shared_ptr<ov::threading::IStreamsExecutor> task_executor)
-    : network(program::build_program(engine, topo, config, task_executor, is_internal), config, engine.create_stream(config), is_internal) {}
-
-network::network(engine& engine,
                  const std::set<std::shared_ptr<program_node>>& nodes,
                  const ExecutionConfig& config,
                  std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
@@ -449,14 +442,6 @@ network::ptr network::allocate_network(stream::ptr stream, program::ptr program,
 network::ptr network::allocate_network(engine& engine, program::ptr program, bool is_internal, bool is_primary_stream) {
     auto stream = engine.create_stream(program->get_config());
     return std::make_shared<network>(program, program->get_config(), stream, is_internal, is_primary_stream);
-}
-
-network::ptr network::build_network(engine& engine,
-                                    const topology& topology,
-                                    const ExecutionConfig& config,
-                                    std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
-                                    bool is_internal) {
-    return std::make_shared<network>(engine, topology, config, is_internal, task_executor);
 }
 
 network::ptr network::build_network(engine& engine,
@@ -535,7 +520,7 @@ event::ptr network::set_input_data(const primitive_id& id, memory::ptr data) {
 
     primitive_inst = find_primitive(id);
 
-    OPENVINO_ASSERT(primitive_inst != nullptr, "[GPU] topology doesn't contain primitive: ", id);
+    OPENVINO_ASSERT(primitive_inst != nullptr, "[GPU] network doesn't contain primitive: ", id);
 
     if (primitive_inst->type() != input_layout::type_id()) {
         CLDNN_ERROR_MESSAGE(id, "primitive " + id + " is not an input");
@@ -677,7 +662,7 @@ std::vector<event::ptr> network::set_output_memory(const primitive_id& id, memor
     std::vector<event::ptr> ret_ev;
     p_inst = find_primitive(id);
 
-    OPENVINO_ASSERT(p_inst != nullptr, "[GPU] topology doesn't contain primitive: ", id);
+    OPENVINO_ASSERT(p_inst != nullptr, "[GPU] network doesn't contain primitive: ", id);
 
     auto iter = std::find(_outputs.begin(), _outputs.end(), p_inst);
     if (iter == _outputs.end())
@@ -744,7 +729,7 @@ std::string network::get_primitive_info(const primitive_id& id) const {
 bool network::is_cpu_impl(const primitive_id& id) const {
     auto prim_inst = find_primitive(id);
 
-    OPENVINO_ASSERT(prim_inst, "[GPU] Can't get implementation type, since topology ",
+    OPENVINO_ASSERT(prim_inst, "[GPU] Can't get implementation type, since network ",
                                "doesn't contain primitive with requested id: ", id);
 
     return prim_inst->get_impl() ? prim_inst->get_impl()->is_cpu() : true;

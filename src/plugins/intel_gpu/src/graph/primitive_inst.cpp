@@ -1940,84 +1940,85 @@ std::string primitive_inst::generic_to_string(program_node const& node, const ch
 
 cldnn::network::ptr primitive_inst::get_unfused_subgraph() {
     GPU_DEBUG_TRACE_DETAIL << id() << ": Use unfused subgraph due to unexpected fusions\n";
-    if (!_unfused_subgraph) {
-        topology t;
+    // Fixme: implement unfusion w/o topology
+    // if (!_unfused_subgraph) {
+    //     topology t;
 
-        std::vector<primitive_id> outer_dep_ids;
-        // Add input primitives: constants are moved as is
-        // Any other primitive types are replaced with input_layout
-        for (auto& dep : _node->get_dependencies()) {
-            if (dep.first->is_type<data>()) {
-                auto& data_node = dep.first->as<data>();
-                auto data_prim = *data_node.get_primitive();
-                // mem field of original primitive can be nullified during transfer_memory_to_device pass, thus use mem from program_node
-                data_prim.mem = data_node.get_attached_memory_ptr();
-                t.add(data_prim);
-            } else {
-                input_layout in_prim(dep.first->id(), dep.first->get_output_layout());
-                t.add(in_prim);
-            }
-            outer_dep_ids.push_back(dep.first->id());
-        }
+    //     std::vector<primitive_id> outer_dep_ids;
+    //     // Add input primitives: constants are moved as is
+    //     // Any other primitive types are replaced with input_layout
+    //     for (auto& dep : _node->get_dependencies()) {
+    //         if (dep.first->is_type<data>()) {
+    //             auto& data_node = dep.first->as<data>();
+    //             auto data_prim = *data_node.get_primitive();
+    //             // mem field of original primitive can be nullified during transfer_memory_to_device pass, thus use mem from program_node
+    //             data_prim.mem = data_node.get_attached_memory_ptr();
+    //             t.add(data_prim);
+    //         } else {
+    //             input_layout in_prim(dep.first->id(), dep.first->get_output_layout());
+    //             t.add(in_prim);
+    //         }
+    //         outer_dep_ids.push_back(dep.first->id());
+    //     }
 
-        // Create the primitive itself
-        t.add_primitive(std::const_pointer_cast<primitive>(_node->get_primitive()));
-        outer_dep_ids.push_back(_node->id());
+    //     // Create the primitive itself
+    //     t.add_primitive(std::const_pointer_cast<primitive>(_node->get_primitive()));
+    //     outer_dep_ids.push_back(_node->id());
 
-        // Add primitives for fused-ops
-        for (auto& fd : _impl_params->fused_desc) {
-            auto prim = std::const_pointer_cast<primitive>(fd.desc);
-            for (size_t i = 0; i < prim->input.size(); i++) {
-                auto& in = prim->input[i];
-                // If dependency name is not found in current topology, we need to remap it
-                // It may happen if dependency primitive has been fused into some previous primitive, e.g:
-                // prim1 -> eltwise1 -> eltwise2
-                //          prim2 -------/
-                //  fused_prim1=prim1 + eltwise1
-                //  fused_prim2=prim2 + eltwise2
-                // from the names perspective fused graph will looka as follows:
-                // prim1 -> prim2
-                // And when we construct unfused subgraph for prim2, we take original eltwise2 primitive which expects eltwise1 primitive as input
-                // which doesn't exist anymore in the graph
-                // Thus we update dependency name used dependencies idx stored in fused descriptor.
-                if (fd.has_outer_dep()) {
-                    if (std::find_if(outer_dep_ids.begin(), outer_dep_ids.end(), [&](const primitive_id& pid) {
-                            return pid == in.pid;
-                        }) == outer_dep_ids.end()) {
-                        size_t dep_id = fd.outer_dep_start_idx;
-                        in = _node->get_dependency(dep_id).id();
-                    }
-                }
-            }
-            t.add_primitive(prim);
-            outer_dep_ids.push_back(prim->id);
-        }
-        // Samely, need to update dependency of the current fused nodes' input primitive ids with those in the current program
-        auto prim_of_fused_node = std::const_pointer_cast<primitive>(_impl_params->desc);
-        for (size_t i = 0; i < prim_of_fused_node->input.size(); ++i) {
-            auto& in = prim_of_fused_node->input[i];
-            if (std::find_if(outer_dep_ids.begin(), outer_dep_ids.end(),
-                             [&](const primitive_id& pid) {
-                                 return pid == in.pid;
-                             }) == outer_dep_ids.end()) {
-                in = _node->get_dependency(i).id();
-            }
-        }
-        ExecutionConfig subgraph_config{
-            ov::intel_gpu::allow_static_input_reorder(true),
-            ov::intel_gpu::allow_new_shape_infer(true),
-            ov::enable_profiling(get_network().get_config().get_property(ov::enable_profiling))
-        };
-        auto prog = program::build_program(get_network().get_engine(),
-                                           t,
-                                           subgraph_config,
-                                           get_network().get_program()->get_task_executor(),
-                                           get_network().get_program()->get_compilation_context_ptr(),
-                                           true,
-                                           false);
+    //     // Add primitives for fused-ops
+    //     for (auto& fd : _impl_params->fused_desc) {
+    //         auto prim = std::const_pointer_cast<primitive>(fd.desc);
+    //         for (size_t i = 0; i < prim->input.size(); i++) {
+    //             auto& in = prim->input[i];
+    //             // If dependency name is not found in current topology, we need to remap it
+    //             // It may happen if dependency primitive has been fused into some previous primitive, e.g:
+    //             // prim1 -> eltwise1 -> eltwise2
+    //             //          prim2 -------/
+    //             //  fused_prim1=prim1 + eltwise1
+    //             //  fused_prim2=prim2 + eltwise2
+    //             // from the names perspective fused graph will looka as follows:
+    //             // prim1 -> prim2
+    //             // And when we construct unfused subgraph for prim2, we take original eltwise2 primitive which expects eltwise1 primitive as input
+    //             // which doesn't exist anymore in the graph
+    //             // Thus we update dependency name used dependencies idx stored in fused descriptor.
+    //             if (fd.has_outer_dep()) {
+    //                 if (std::find_if(outer_dep_ids.begin(), outer_dep_ids.end(), [&](const primitive_id& pid) {
+    //                         return pid == in.pid;
+    //                     }) == outer_dep_ids.end()) {
+    //                     size_t dep_id = fd.outer_dep_start_idx;
+    //                     in = _node->get_dependency(dep_id).id();
+    //                 }
+    //             }
+    //         }
+    //         t.add_primitive(prim);
+    //         outer_dep_ids.push_back(prim->id);
+    //     }
+    //     // Samely, need to update dependency of the current fused nodes' input primitive ids with those in the current program
+    //     auto prim_of_fused_node = std::const_pointer_cast<primitive>(_impl_params->desc);
+    //     for (size_t i = 0; i < prim_of_fused_node->input.size(); ++i) {
+    //         auto& in = prim_of_fused_node->input[i];
+    //         if (std::find_if(outer_dep_ids.begin(), outer_dep_ids.end(),
+    //                          [&](const primitive_id& pid) {
+    //                              return pid == in.pid;
+    //                          }) == outer_dep_ids.end()) {
+    //             in = _node->get_dependency(i).id();
+    //         }
+    //     }
+    //     ExecutionConfig subgraph_config{
+    //         ov::intel_gpu::allow_static_input_reorder(true),
+    //         ov::intel_gpu::allow_new_shape_infer(true),
+    //         ov::enable_profiling(get_network().get_config().get_property(ov::enable_profiling))
+    //     };
+    //     auto prog = program::build_program(get_network().get_engine(),
+    //                                        t,
+    //                                        subgraph_config,
+    //                                        get_network().get_program()->get_task_executor(),
+    //                                        get_network().get_program()->get_compilation_context_ptr(),
+    //                                        true,
+    //                                        false);
 
-        _unfused_subgraph = network::allocate_network(get_network().get_stream_ptr(), prog, true, get_network().is_primary_stream());
-    }
+    //     _unfused_subgraph = network::allocate_network(get_network().get_stream_ptr(), prog, true, get_network().is_primary_stream());
+    // }
     return _unfused_subgraph;
 }
 

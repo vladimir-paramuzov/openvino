@@ -143,55 +143,6 @@ std::shared_ptr<ICompilationContext> program::make_compilation_context(const Exe
 }
 
 program::program(engine& engine_ref,
-                 topology const& topology,
-                 const ExecutionConfig& config,
-                 std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
-                 std::shared_ptr<ICompilationContext> compilation_context,
-                 bool is_internal,
-                 bool no_optimizations,
-                 bool is_body_program)
-    : _engine(engine_ref),
-      _stream(_engine.create_stream(config)),
-      _config(config),
-      _task_executor(std::move(task_executor)),
-      processing_order(),
-      is_internal(is_internal),
-      _is_body_program(is_body_program),
-      _compilation_context(compilation_context) {
-    _config.apply_user_properties(_engine.get_device_info());
-    init_primitives();
-    GPU_DEBUG_INFO << "Program config\n" << config.to_string();
-    init_program();
-    prepare_nodes(topology);
-    program_node::reset_unique_id();
-
-    if (no_optimizations) {
-        init_graph();
-    } else {
-        build_program(is_internal);
-        if (_is_body_program) {
-            // To skip empty if (condition) subgraph
-            bool can_be_optimized = true;
-            for (auto& node : processing_order) {
-                if (node->is_type<input_layout>()) {
-                    continue;
-                } else if (node->is_type<data>()) {
-                    continue;
-                } else if (node->is_output() && node->is_type<reorder>() && !node->has_fused_primitives() &&
-                      node->get_input_layout(0).data_type == node->get_output_layouts(false)[0].data_type &&
-                      node->get_input_layout(0).format == node->get_output_layouts(false)[0].format &&
-                      node->get_input_layout(0).get_partial_shape().size() == node->get_output_layouts(false)[0].get_partial_shape().size()) {
-                    continue;
-                }
-                can_be_optimized = false;
-                break;
-            }
-            this->_can_be_optimized = can_be_optimized;
-        }
-    }
-}
-
-program::program(engine& engine_ref,
                  std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map,
                  const ExecutionConfig& config,
                  std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
@@ -318,36 +269,6 @@ void program::init_primitives() {
 
 kernels_cache& program::get_kernels_cache() const {
     return *_kernels_cache;
-}
-
-program::ptr program::build_program(engine& engine,
-                                    const topology& topology,
-                                    const ExecutionConfig& config,
-                                    std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
-                                    bool is_internal,
-                                    bool no_optimizations,
-                                    bool is_body_program) {
-    return std::make_shared<program>(engine, topology, config, task_executor, nullptr, is_internal, no_optimizations, is_body_program);
-}
-
-program::ptr program::build_program(engine& engine,
-                                    const topology& topology,
-                                    const ExecutionConfig& config,
-                                    std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
-                                    std::shared_ptr<ICompilationContext> compilation_context,
-                                    bool is_internal,
-                                    bool no_optimizations,
-                                    bool is_body_program) {
-    return std::make_shared<program>(engine, topology, config, task_executor, compilation_context, is_internal, no_optimizations, is_body_program);
-}
-
-program::ptr program::build_program(engine& engine,
-                                    const topology& topology,
-                                    const ExecutionConfig& config,
-                                    bool is_internal,
-                                    bool no_optimizations,
-                                    bool is_body_program) {
-    return std::make_shared<program>(engine, topology, config, nullptr, nullptr, is_internal, no_optimizations, is_body_program);
 }
 
 program::ptr program::build_program(engine& engine,
@@ -484,24 +405,6 @@ void program::prepare_nodes(std::set<std::shared_ptr<program_node>> const& nodes
     }
 }
 
-// create all nodes from topology primitives, add dependencies among them and create inputs list
-void program::prepare_nodes(topology const& topology) {
-    auto const& topo_map = topology.get_primitives();
-    for (const auto& prim : topo_map) {
-        get_or_create(prim.second);
-    }
-    for (const auto& node : nodes_map) {
-        auto node_ptr = node.second.get();
-        if (node_ptr == nullptr)
-            throw std::runtime_error("NULL pointer in nodes_map.");
-        add_node_dependencies(node_ptr);
-        if (node_ptr->dependencies.size() == 0) {
-            inputs.push_back(node_ptr);
-        }
-    }
-}
-
-// create all nodes from topology primitives, add dependencies among them and create inputs list
 void program::prepare_nodes(std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map) {
     for (const auto& kv : node_prim_map) {
         get_or_create(kv.second);

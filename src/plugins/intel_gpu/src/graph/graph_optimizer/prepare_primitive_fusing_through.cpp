@@ -6,6 +6,7 @@
 #include "pass_manager.h"
 #include "program_helpers.h"
 #include "strided_slice_inst.h"
+#include "intel_gpu/primitives/input_layout.hpp"
 #include "reshape_inst.h"
 #include "reduce_inst.h"
 #include "data_inst.h"

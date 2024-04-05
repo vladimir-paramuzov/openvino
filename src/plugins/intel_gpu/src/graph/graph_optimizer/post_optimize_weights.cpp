@@ -102,7 +102,7 @@ void post_optimize_weights::optimize_weights(T& node, program& p) {
                 }
             } else {
                 auto weights_reorder = _rf.get_weights_reorder(prev_node.id(), weights_reorder_params);
-                // insert new weights reorder node to topology
+                // insert new weights reorder node to program
                 p.add_intermediate(weights_reorder.first, node, i, !weights_reorder.second);
                 // set weights reorder's node output layout and implementation
                 auto& weights_reorder_node = node.get_dependency(i);

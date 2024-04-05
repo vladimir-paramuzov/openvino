@@ -12,6 +12,7 @@
 #include "one_hot_inst.h"
 #include "shape_of_inst.h"
 #include "permute_inst.h"
+#include "input_layout_inst.h"
 #include "depth_to_space_inst.h"
 #include "concatenation_inst.h"
 #include "region_yolo_inst.h"

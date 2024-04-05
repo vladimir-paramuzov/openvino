@@ -12,7 +12,6 @@
 #include "intel_gpu/runtime/engine.hpp"
 #include "intel_gpu/runtime/execution_config.hpp"
 #include "intel_gpu/runtime/compilation_context.hpp"
-#include "intel_gpu/graph/topology.hpp"
 #include "intel_gpu/graph/program.hpp"
 
 #include <vector>
@@ -102,7 +101,6 @@ public:
     std::map<BlobCacheKey, cldnn::primitive_id> blobMemCache;
 
     std::shared_ptr<cldnn::program> get_compiled_program() const;
-    std::shared_ptr<cldnn::topology> get_topology() const { return m_topology; }
 
     const std::map<size_t, cldnn::layout>& get_input_layouts() const { return inputLayouts; }
     cldnn::engine& get_engine() const { return m_engine; }
@@ -154,7 +152,6 @@ private:
     cldnn::engine& m_engine;
     static std::mutex m_mutex;
 
-    std::shared_ptr<cldnn::topology> m_topology;
     std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>> m_node_prim_map;
     CustomLayerMap m_custom_layers;
 
@@ -170,10 +167,9 @@ private:
     void EnableQueryMode() { queryMode = true; }
     void DisableQueryMode() { queryMode = false; }
 
-    void prepare_build();
     void cleanup_build();
 
-    // TODO(eunsoo): remove createTopolpgyOnly argument and add another method to create topology from ngraph function
+    // TODO(eunsoo): remove createTopolpgyOnly argument and add another method to create  from ngraph function
     std::shared_ptr<cldnn::program> build(const std::vector<std::shared_ptr<ov::Node>>& ops, bool partialBuild = false, bool innerProgram = false);
 
     void CreateSingleLayerPrimitive(const std::shared_ptr<ov::Node>& op);

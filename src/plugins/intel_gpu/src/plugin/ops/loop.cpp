@@ -15,7 +15,6 @@
 #include "intel_gpu/primitives/mutable_data.hpp"
 #include "intel_gpu/primitives/data.hpp"
 #include "intel_gpu/primitives/reorder.hpp"
-#include "intel_gpu/graph/topology.hpp"
 
 #include <vector>
 #include <algorithm>

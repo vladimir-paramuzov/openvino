@@ -22,7 +22,6 @@
 
 namespace cldnn {
 
-struct topology;
 struct program_node;
 class layout_optimizer;
 class pass_manager;
@@ -129,15 +128,6 @@ public:
     typedef std::vector<primitive_info> primitives_info;
     typedef std::vector<std::pair<std::string, primitives_info>> graph_optimizer_info;
     typedef std::pair<primitive_id, std::vector<primitive_id>> optimized_info;
-
-    program(engine& engine_ref,
-            topology const& topology,
-            const ExecutionConfig& config,
-            std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
-            std::shared_ptr<ICompilationContext> compilation_context,
-            bool is_internal = false,
-            bool no_optimizations = false,
-            bool is_body_program = false);
 
     program(engine& engine_ref,
             std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map,
@@ -261,29 +251,6 @@ public:
                              bool is_body_program = false);
 
     static ptr build_program(engine& engine,
-                             const topology& topology,
-                             const ExecutionConfig& config,
-                             bool is_internal = false,
-                             bool no_optimizations = false,
-                             bool is_body_program = false);
-
-
-    static ptr build_program(engine& engine,
-                             const topology& topology,
-                             const ExecutionConfig& config,
-                             std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
-                             bool is_internal = false,
-                             bool no_optimizations = false,
-                             bool is_body_program = false);
-    static ptr build_program(engine& engine,
-                             const topology& topology,
-                             const ExecutionConfig& config,
-                             std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
-                             std::shared_ptr<ICompilationContext> compilation_context,
-                             bool is_internal = false,
-                             bool no_optimizations = false,
-                             bool is_body_program = false);
-    static ptr build_program(engine& engine,
                              const std::set<std::shared_ptr<program_node>>& nodes,
                              const ExecutionConfig& config,
                              std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
@@ -341,8 +308,6 @@ private:
     /*
     ** High-level functions, in order of usage
     */
-    /* build nodes internal structure based on topology */
-    void prepare_nodes(topology const& topology);
     void prepare_nodes(std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map);
     /* build nodes internal structure based on the subset of nodes of other program  (used in propagate_constants) */
     void prepare_nodes(std::set<std::shared_ptr<program_node>> const& nodes);

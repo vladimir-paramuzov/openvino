@@ -6,7 +6,6 @@
 
 #include "openvino/runtime/threading/cpu_streams_executor.hpp"
 
-#include "intel_gpu/graph/topology.hpp"
 #include "intel_gpu/graph/program.hpp"
 #include "intel_gpu/graph/serialization/binary_buffer.hpp"
 #include "intel_gpu/runtime/compounds.hpp"
@@ -68,11 +67,6 @@ public:
     using ptr = std::shared_ptr<network>;
 
     explicit network(program::ptr program, const ExecutionConfig& config, stream::ptr stream, bool is_internal = false, bool is_primary_stream = true);
-    network(engine& engine,
-            const topology& topo,
-            const ExecutionConfig& config = {},
-            bool is_internal = false,
-            std::shared_ptr<ov::threading::IStreamsExecutor> task_executor = nullptr);
 
     network(engine& engine,
             const std::set<std::shared_ptr<program_node>>& nodes,
@@ -86,11 +80,6 @@ public:
 
     ~network();
 
-    static ptr build_network(engine& engine,
-                             const topology& topology,
-                             const ExecutionConfig& config = {},
-                             std::shared_ptr<ov::threading::IStreamsExecutor> task_executor = nullptr,
-                             bool is_internal = false);
 
     static ptr build_network(engine& engine,
                              const std::set<std::shared_ptr<program_node>>& nodes,
@@ -180,7 +169,7 @@ public:
 
     /// @brief Executes network and returns the list of @ref network_output.
     /// @param dependencies List of @ref event objects to be waited before network execution.
-    /// @note User should call set_input_data() for every @ref input_layout defined in source @ref topology
+    /// @note User should call set_input_data() for every @ref input_layout defined in source @ref Model
     /// before network execution.
     std::map<primitive_id, network_output> execute(const std::vector<event::ptr>& dependencies = {});
 

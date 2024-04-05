@@ -9,7 +9,6 @@
 #endif
 
 #include "intel_gpu/graph/network.hpp"
-#include "intel_gpu/graph/topology.hpp"
 #include "intel_gpu/plugin/custom_layer.hpp"
 #include "intel_gpu/plugin/remote_context.hpp"
 #include "intel_gpu/plugin/program_builder.hpp"

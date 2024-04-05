@@ -4,7 +4,6 @@
 
 #pragma once
 #include "primitive.hpp"
-#include "intel_gpu/graph/topology.hpp"
 #include "intel_gpu/graph/program.hpp"
 #include <vector>
 
