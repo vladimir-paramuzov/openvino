@@ -143,11 +143,12 @@ public:
 
     std::shared_ptr<ov::threading::IStreamsExecutor> get_task_executor() const { return m_task_executor; }
     std::shared_ptr<cldnn::ICompilationContext> get_compilation_context() const { return m_compilation_context; }
+    std::shared_ptr<ov::Node> convert_op(const std::shared_ptr<ov::Node>& op);
 
+    std::shared_ptr<ov::Model> m_model;
 private:
     static factories_map_t factories_map;
     std::shared_ptr<cldnn::program> m_program;
-    std::shared_ptr<ov::Model> m_model;
     ExecutionConfig m_config;
     cldnn::engine& m_engine;
     static std::mutex m_mutex;
@@ -170,7 +171,7 @@ private:
     void cleanup_build();
 
     // TODO(eunsoo): remove createTopolpgyOnly argument and add another method to create  from ngraph function
-    std::shared_ptr<cldnn::program> build(const std::vector<std::shared_ptr<ov::Node>>& ops, bool partialBuild = false, bool innerProgram = false);
+    std::shared_ptr<cldnn::program> build(std::shared_ptr<ov::Model> model, bool partialBuild = false, bool innerProgram = false);
 
     void CreateSingleLayerPrimitive(const std::shared_ptr<ov::Node>& op);
 };

@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include "intel_gpu/op/internal_primitive.hpp"
+#include "openvino/core/node_output.hpp"
+#include "openvino/core/node_vector.hpp"
 #include "openvino/op/constant.hpp"
 #include "openvino/op/split.hpp"
 #include "openvino/op/variadic_split.hpp"
@@ -15,6 +18,7 @@
 #include "intel_gpu/primitives/data.hpp"
 #include "intel_gpu/op/fully_connected_compressed.hpp"
 #include "intel_gpu/op/placeholder.hpp"
+#include "plugin/transformations/convert_to_internal_opset.hpp"
 
 #ifdef __linux__
 # include <dlfcn.h>
@@ -101,9 +105,7 @@ ProgramBuilder::ProgramBuilder(std::shared_ptr<ov::Model> model, cldnn::engine& 
     auto custom_layers_config = m_config.get_property(ov::intel_gpu::config_file);
     CustomLayer::LoadFromFile(custom_layers_config, m_custom_layers, custom_layers_config.empty());
 
-    auto ops = model->get_ordered_ops();
-
-    m_program = build(ops, partial_build, is_inner_program);
+    m_program = build(model, partial_build, is_inner_program);
 }
 
 ProgramBuilder::ProgramBuilder(cldnn::engine& engine, const ExecutionConfig& config)
@@ -128,11 +130,11 @@ void ProgramBuilder::cleanup_build() {
     #endif
 }
 
-std::shared_ptr<cldnn::program> ProgramBuilder::build(const std::vector<std::shared_ptr<ov::Node>>& ops, bool partial_build, bool is_inner_program) {
+std::shared_ptr<cldnn::program> ProgramBuilder::build(std::shared_ptr<ov::Model> model, bool partial_build, bool is_inner_program) {
     OV_ITT_SCOPED_TASK(itt::domains::intel_gpu_plugin, "ProgramBuilder::build");
     // In the case of inner program, allow_new_shape_infer flag is setted by outside of program.
     // So, do not check allow_new_shape_infer for inner program build
-    for (const auto& op : ops) {
+    for (const auto& op : model->get_ordered_ops()) {
         if (requires_new_shape_infer(op)) {
             allow_new_shape_infer = true;
             break;
@@ -149,9 +151,9 @@ std::shared_ptr<cldnn::program> ProgramBuilder::build(const std::vector<std::sha
 
     {
         GPU_DEBUG_DEFINE_MEM_LOGGER("CreateSingleLayerPrimitives");
-        for (const auto& op : ops) {
-            CreateSingleLayerPrimitive(op);
-        }
+        std::cerr << "!!!!!!!!!!!!!!!!\n";
+        ConvertToInternalOpset(m_engine, m_config).run_on_model(model);
+        std::cerr << "!!!!!!!!!!!!!!!!\n";
     }
 
     OV_ITT_SCOPED_TASK(itt::domains::intel_gpu_plugin, "ProgramBuilder::CreateProgram");
@@ -198,6 +200,38 @@ bool ProgramBuilder::is_op_supported(const std::shared_ptr<ov::Node>& op) {
 
     return true;
 }
+
+std::shared_ptr<ov::Node> ProgramBuilder::convert_op(const std::shared_ptr<ov::Node>& op) {
+    GPU_DEBUG_LOG << "Process " << "op::" << op->get_type_info().version_id << "::" << op->get_type_name() << " operation "
+                  << "(friendly_name=" << op->get_friendly_name() << ")" << std::endl;
+
+    bool is_created = false;
+    const ov::NodeTypeInfo* op_type_info = &op->get_type_info();
+    while (op_type_info != nullptr) {
+        auto factory_it = factories_map.find(*op_type_info);
+        if (factory_it != factories_map.end()) {
+            factory_it->second(*this, op);
+            is_created = true;
+            break;
+        }
+        op_type_info = op_type_info->parent;
+    }
+
+    if (!is_created) {
+        OPENVINO_THROW("Operation: ", op->get_friendly_name(),
+                       " of type ", op->get_type_name(),
+                       "(", op->get_type_info().version_id, ") is not supported");
+    }
+
+    OutputVector deps;
+    for (auto& in : op->inputs()) {
+        deps.push_back(in.get_source_output());
+    }
+
+    return std::make_shared<op::InternalPrimitive>(deps, op, m_node_prim_map.count(op.get()) > 0 ? m_node_prim_map.at(op.get()) : nullptr);
+}
+
+
 
 void ProgramBuilder::CreateSingleLayerPrimitive(const std::shared_ptr<ov::Node>& op) {
     OV_ITT_SCOPED_TASK(itt::domains::intel_gpu_plugin, "ProgramBuilder::CreateSingleLayerPrimitive");
@@ -255,15 +289,7 @@ std::vector<cldnn::input_info> ProgramBuilder::GetInputInfo(const std::shared_pt
             inputInfo.push_back(cldnn::input_info{});
             continue;
         }
-        if (!queryMode) {
-            if (primitive_ids.find(prevName) == primitive_ids.end()) {
-                OPENVINO_THROW("Input ", prevName, " hasn't been found in primitive_ids map");
-            }
-            inputInfo.push_back(
-                cldnn::input_info(primitive_ids.at(prevName), is_legacy_multiple_outputs ? 0: static_cast<int>(op->get_input_source_output(i).get_index())));
-        } else {
-            inputInfo.push_back(cldnn::input_info(prevName, is_legacy_multiple_outputs ? 0 : static_cast<int>(op->get_input_source_output(i).get_index())));
-        }
+        inputInfo.push_back(cldnn::input_info(prevName, is_legacy_multiple_outputs ? 0 : static_cast<int>(op->get_input_source_output(i).get_index())));
     }
     return inputInfo;
 }
