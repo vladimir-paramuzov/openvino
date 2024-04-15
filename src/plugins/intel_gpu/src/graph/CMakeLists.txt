@@ -37,8 +37,6 @@ target_include_directories(${TARGET_NAME} PUBLIC
 
 target_compile_options(${TARGET_NAME} PRIVATE
 $<$<CONFIG:Release>:$<IF:$<CXX_COMPILER_ID:MSVC>,/Os,-Os>>)
-add_sycl_to_target(TARGET ${TARGET_NAME} SOURCES ${SYCL_SOURCES})
-# target_compile_options(${TARGET_NAME} PUBLIC -fsycl-targets=spir64_gen "-Xs -device *") # Native API failed. Native API returns: -46 (PI_ERROR_INVALID_KERNEL_NAME)
 
 if(OV_COMPILER_IS_INTEL_LLVM)
     add_sycl_to_target(TARGET ${TARGET_NAME} SOURCES ${SYCL_SOURCES})
