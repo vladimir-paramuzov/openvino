@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include "intel_gpu/op/internal_primitive.hpp"
 #include "intel_gpu/op/placeholder.hpp"
 #include "intel_gpu/plugin/program_builder.hpp"
 #include "openvino/core/model.hpp"
@@ -143,7 +144,7 @@ std::shared_ptr<ICompilationContext> program::make_compilation_context(const Exe
 }
 
 program::program(engine& engine_ref,
-                 std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map,
+                 std::shared_ptr<ov::Model> model,
                  const ExecutionConfig& config,
                  std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
                  std::shared_ptr<ICompilationContext> compilation_context,
@@ -162,7 +163,7 @@ program::program(engine& engine_ref,
     init_primitives();
     GPU_DEBUG_INFO << "Program config\n" << config.to_string();
     init_program();
-    prepare_nodes(node_prim_map);
+    prepare_nodes(model);
     program_node::reset_unique_id();
 
     if (no_optimizations) {
@@ -272,14 +273,14 @@ kernels_cache& program::get_kernels_cache() const {
 }
 
 program::ptr program::build_program(engine& engine,
-                                    std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map,
+                                    std::shared_ptr<ov::Model> model,
                                     const ExecutionConfig& config,
                                     std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
                                     std::shared_ptr<ICompilationContext> compilation_context,
                                     bool is_internal,
                                     bool no_optimizations,
                                     bool is_body_program) {
-    return std::make_shared<program>(engine, node_prim_map, config, task_executor, compilation_context, is_internal, no_optimizations, is_body_program);
+    return std::make_shared<program>(engine, model, config, task_executor, compilation_context, is_internal, no_optimizations, is_body_program);
 }
 
 program::ptr program::build_program(engine& engine,
@@ -405,28 +406,26 @@ void program::prepare_nodes(std::set<std::shared_ptr<program_node>> const& nodes
     }
 }
 
-void program::prepare_nodes(std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map) {
-    for (const auto& kv : node_prim_map) {
-        get_or_create(kv.second);
-    }
-    for (const auto& kv : node_prim_map) {
-        auto node_ptr = nodes_map.count(kv.second->id) == 1 ? nodes_map.at(kv.second->id) : nullptr;
-        OPENVINO_ASSERT(node_ptr != nullptr, "NULL pointer in nodes_map.");
-        auto ov_node = kv.first;
+void program::prepare_nodes(std::shared_ptr<ov::Model> model) {
+    for (const auto& op : model->get_ordered_ops()) {
+        auto casted_op = std::dynamic_pointer_cast<ov::intel_gpu::op::InternalPrimitive>(op);
+        get_or_create(casted_op->get_primitive());
 
-        for (size_t i = 0; i < ov_node->get_input_size(); i++) {
-            auto dep = ov_node->get_input_node_ptr(i);
-            if (ov::is_type<ov::intel_gpu::op::Placeholder>(dep))
+        auto node_ptr = nodes_map.at(casted_op->get_primitive()->id);
+
+        for (size_t i = 0; i < op->get_input_size(); i++) {
+            auto dep = std::dynamic_pointer_cast<ov::intel_gpu::op::InternalPrimitive>(op->get_input_node_shared_ptr(i));
+            if (ov::is_type<ov::intel_gpu::op::Placeholder>(dep->get_original_node()))
                 continue;
-            auto dep_prim = node_prim_map.at(dep);
-            OPENVINO_ASSERT(nodes_map.count(dep_prim->id) > 0, "[GPU] Dependency not found!");
-            auto dep_node = nodes_map.at(dep_prim->id);
-            node_ptr->dependencies.push_back({dep_node.get(), ov_node->get_input_source_output(i).get_index()});
+
+            OPENVINO_ASSERT(nodes_map.count(dep->get_primitive()->id) > 0, "[GPU] Dependency not found!");
+            auto dep_node = nodes_map.at(dep->get_primitive()->id);
+            node_ptr->dependencies.push_back({dep_node.get(), dep->get_input_source_output(i).get_index()});
 
             dep_node->users.push_back(node_ptr.get());
         }
 
-        if (kv.first->get_input_size() == 0) {
+        if (casted_op->get_input_size() == 0) {
             inputs.push_back(node_ptr.get());
         }
     }

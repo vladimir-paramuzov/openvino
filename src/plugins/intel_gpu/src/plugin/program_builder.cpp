@@ -160,7 +160,7 @@ std::shared_ptr<cldnn::program> ProgramBuilder::build(std::shared_ptr<ov::Model>
     cldnn::program::ptr program;
     try {
         program = cldnn::program::build_program(m_engine,
-                                                m_node_prim_map,
+                                                model,
                                                 m_config,
                                                 get_task_executor(),
                                                 get_compilation_context(),

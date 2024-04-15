@@ -130,7 +130,7 @@ public:
     typedef std::pair<primitive_id, std::vector<primitive_id>> optimized_info;
 
     program(engine& engine_ref,
-            std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map,
+            std::shared_ptr<ov::Model> model,
             const ExecutionConfig& config,
             std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
             std::shared_ptr<ICompilationContext> compilation_context,
@@ -242,7 +242,7 @@ public:
     uint32_t get_id() const { return prog_id; }
 
     static ptr build_program(engine& engine,
-                             std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map,
+                             std::shared_ptr<ov::Model> model,
                              const ExecutionConfig& config,
                              std::shared_ptr<ov::threading::IStreamsExecutor> task_executor,
                              std::shared_ptr<ICompilationContext> compilation_context,
@@ -308,7 +308,7 @@ private:
     /*
     ** High-level functions, in order of usage
     */
-    void prepare_nodes(std::map<const ov::Node*, std::shared_ptr<cldnn::primitive>>& node_prim_map);
+    void prepare_nodes(std::shared_ptr<ov::Model> model);
     /* build nodes internal structure based on the subset of nodes of other program  (used in propagate_constants) */
     void prepare_nodes(std::set<std::shared_ptr<program_node>> const& nodes);
     void add_node_dependencies(program_node* node_ptr);

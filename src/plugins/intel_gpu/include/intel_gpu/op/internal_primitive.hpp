@@ -31,6 +31,9 @@ public:
 
     std::shared_ptr<Node> clone_with_new_inputs(const OutputVector& new_args) const override;
 
+    std::shared_ptr<cldnn::primitive> get_primitive() const { return m_primitive; }
+    std::shared_ptr<Node> get_original_node() const { return m_original_node; }
+
 protected:
     std::shared_ptr<Node> m_original_node;
     std::shared_ptr<cldnn::primitive> m_primitive;
