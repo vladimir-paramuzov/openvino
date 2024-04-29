@@ -112,6 +112,8 @@ ProgramBuilder::ProgramBuilder(std::shared_ptr<ov::Model> model, cldnn::engine& 
         m_config.set_property(ov::intel_gpu::max_kernels_per_batch(8));
     }
 
+    std::cerr << "ops: " << ops.size() << std::endl;
+
     m_program = build(ops, partial_build, is_inner_program);
 }
 

@@ -432,7 +432,14 @@ network::network(program::ptr program, uint16_t stream_id)
 network::network(program::ptr program, stream::ptr stream, uint16_t stream_id)
     : network(program, program->get_config(), stream, false, stream_id == 0) {}
 
+static std::vector<uint64_t> times;
+
 network::~network() {
+    if (times.size() >= 2) {
+        std::cerr << "First: " << times[1] << " ms" << std::endl;
+        double avg = static_cast<double>(std::accumulate(times.begin() + 2, times.end(), (size_t)0, std::plus<size_t>()));
+        std::cerr << "Avg: " << avg / (times.size() - 2) << " ms" << std::endl;
+    }
     if (_program != nullptr)
         _program->cancel_compilation_context();
     _memory_pool->clear_pool_for_network(net_id);
@@ -909,7 +916,10 @@ void network::add_to_exec_order(const primitive_id& id) {
 }
 
 std::map<primitive_id, network_output> network::execute(const std::vector<event::ptr>& dependencies) {
+    auto start = std::chrono::high_resolution_clock::now();
     execute_impl(dependencies);
+    auto end = std::chrono::high_resolution_clock::now();
+    times.push_back(std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count());
 
     auto output_ids = get_output_ids();
     std::map<primitive_id, network_output> result;
