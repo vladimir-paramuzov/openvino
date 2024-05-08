@@ -349,7 +349,7 @@ TEST(reorder_inputs, no_need_of_reorder_for_strided_slice) {
     config.set_property(ov::intel_gpu::optimize_data(true));
 
     auto program = program::build_program(engine, topology, config, false, true);
-    layout_optimizer lo(true);
+    layout_optimizer lo;
     reorder_factory rf;
     program_wrapper::apply_opt_pass<reorder_inputs>(*program, lo, rf);
 
@@ -389,7 +389,7 @@ TEST(reorder_inputs, no_need_of_reorder_to_change_input_rank_for_rdft) {
     config.set_property(ov::intel_gpu::optimize_data(true));
 
     auto program = program::build_program(engine, topology, config, false, true);
-    layout_optimizer lo(true);
+    layout_optimizer lo;
     reorder_factory rf;
     program_wrapper::apply_opt_pass<reorder_inputs>(*program, lo, rf);
 

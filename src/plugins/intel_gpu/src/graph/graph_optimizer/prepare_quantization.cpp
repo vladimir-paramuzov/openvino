@@ -3,7 +3,6 @@
 //
 
 #include "fully_connected_inst.h"
-#include "pooling_inst.h"
 #include "quantize_inst.h"
 #include "reorder_inst.h"
 #include "eltwise_inst.h"

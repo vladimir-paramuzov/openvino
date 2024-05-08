@@ -44,7 +44,7 @@ TEST(handle_reshape, dont_remove_reshape_that_changes_rank) {
     config.set_property(ov::intel_gpu::optimize_data(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
     program_wrapper::apply_opt_pass<handle_reshape>(*prog);
@@ -75,7 +75,7 @@ TEST(handle_reshape, dont_remove_reshape_that_changes_rank_chain) {
     config.set_property(ov::intel_gpu::optimize_data(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
     program_wrapper::apply_opt_pass<handle_reshape>(*prog);
@@ -121,7 +121,7 @@ TEST(handle_reshape, skip_reorder_node_to_split_when_onndnn_not_support) {
     config.set_property(ov::intel_gpu::optimize_data(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
     lo.set_optimization_attribute(layout_optimizer::optimization_attributes_type::use_onednn_impls, true);
     reorder_factory rf;
 
@@ -153,7 +153,7 @@ TEST(handle_reshape, correct_parameters_propagation) {
     config.set_property(ov::intel_gpu::optimize_data(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<handle_reshape>(*prog);
 
@@ -195,7 +195,7 @@ TEST(handle_reshape, correct_parameters_propagation_2_inputs) {
     config.set_property(ov::intel_gpu::optimize_data(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<handle_reshape>(*prog);
 
@@ -310,7 +310,7 @@ TEST(handle_reshape, reshape_opt_out_layout_update) {
     config.set_property(ov::intel_gpu::optimize_data(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<handle_reshape>(*prog);
 

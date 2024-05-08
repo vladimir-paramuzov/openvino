@@ -43,7 +43,7 @@ TEST(prepare_primitive_fusing, fuse_activation_to_fc_dyn) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -69,7 +69,7 @@ TEST(prepare_primitive_fusing, dont_fuse_incompatible_eltwise) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -96,7 +96,7 @@ TEST(prepare_primitive_fusing, fuse_eltwise_to_fc_dyn_legal) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -138,7 +138,7 @@ TEST(prepare_primitive_fusing, fuse_eltwise_to_fc_dyn_illegal) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -194,7 +194,7 @@ TEST(prepare_primitive_fusing, fuse_eltwise_to_fc_dyn_illegal_const) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -248,7 +248,7 @@ TEST(prepare_primitive_fusing, fuse_eltwise_to_fc_dyn_legal_scalar_const_broadca
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -305,7 +305,7 @@ TEST(prepare_primitive_fusing, fuse_eltwise_to_fc_dyn_illegal_1) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -374,7 +374,7 @@ TEST(prepare_primitive_fusing, fuse_eltwise_to_fc_dyn_illegal_2) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -437,7 +437,7 @@ TEST(prepare_primitive_fusing, dont_remove_only_dep_reshape) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -485,7 +485,7 @@ TEST(prepare_primitive_fusing, eltwise_fusing_residual_connection) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
     ASSERT_NE(prog, nullptr);
@@ -544,7 +544,7 @@ TEST(prepare_primitive_fusing, fuse_constant_transposes_removal_check) {
 
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
     lo.set_implementation_forcing(config.get_property(ov::intel_gpu::force_implementations));
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -629,7 +629,7 @@ TEST(prepare_primitive_fusing, can_profiling_data_when_fuse_illegal) {
     config.set_property(ov::enable_profiling(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 
@@ -682,7 +682,7 @@ TEST(prepare_primitive_fusing, dont_fuse_eltwise_to_dyn_dts) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
 

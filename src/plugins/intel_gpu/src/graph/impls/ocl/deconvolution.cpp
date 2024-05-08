@@ -39,7 +39,7 @@ public:
         const auto& stride = primitive->stride;
         const ov::Strides dilation(impl_param.get_output_layout().get_spatial_rank(), 1);
 
-        const auto& pad = primitive->pad;
+        const auto& pad = primitive->pads_begin;
         const auto& groups = primitive->groups;
 
         auto params = get_weights_bias_default_params<kernel_selector::deconvolution_params>(impl_param, primitive->grouped_weights_shape);

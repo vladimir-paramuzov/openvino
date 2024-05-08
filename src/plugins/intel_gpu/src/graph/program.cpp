@@ -317,71 +317,6 @@ program_node const& program::get_node(primitive_id const& id) const {
     }
 }
 
-// TODO: Remove once we will get full support for input/output padding in all primitive implementations.
-bool program::analyze_output_size_handling_need() {
-    GPU_DEBUG_DEFINE_MEM_LOGGER("analyze_output_size_handling_need");
-    bool handling_needed = false;
-
-    // Calculate output size and compare with specified.
-    for (const auto& node : processing_order) {
-        if (node->is_type<deconvolution>()) {
-            auto& prim_node = node->as<deconvolution>();
-            const auto& prim = prim_node.get_primitive();
-
-            if (!prim->with_output_size)
-                continue;
-
-            tensor specified_output_range(
-                {0, 0, prim->output_size.spatial[0], prim->output_size.spatial[1], prim->output_size.spatial[2]},
-                1);
-
-            auto filter_size = prim_node.weights().get_output_layout().get_tensor();
-
-            auto primInputSize = prim_node.get_input_layout().get_tensor();
-            auto calc_output_range = calc_sliding_window_needed_input_range(primInputSize,
-                                                                            filter_size,
-                                                                            prim->pad,
-                                                                            prim->stride,
-                                                                            ov::Strides(prim->stride.size(), 1),
-                                                                            true,
-                                                                            1);
-
-            if (specified_output_range != calc_output_range)
-                handling_needed = true;
-        } else if (node->is_type<pooling>()) {
-            auto& prim_node = node->as<pooling>();
-            const auto& prim = prim_node.get_primitive();
-
-            if (!prim->with_output_size)
-                continue;
-
-            tensor specified_output_range(
-                {0, 0, prim->output_size.spatial[0], prim->output_size.spatial[1], prim->output_size.spatial[2]},
-                1);
-
-            tensor size(1);
-            for (size_t i = 0; i < prim->size.size(); i++) {
-                size.spatial[i] = static_cast<tensor::value_type>(prim->size[prim->size.size() - i - 1]);
-            }
-            // TODO: Check compatibility of output size calculation (with caffe).
-            auto primInputSize = prim_node.get_input_layout().get_tensor();
-            auto calc_output_range = calc_sliding_window_output_range<swor_mode::exceed_once_data>(
-                primInputSize,
-                size,
-                ov::CoordinateDiff(prim->pads_begin.begin(), prim->pads_begin.end()),
-                prim->stride,
-                ov::Strides(prim->stride.size(), 1),
-                true,
-                1);
-
-            if (specified_output_range != calc_output_range)
-                handling_needed = true;
-        }
-    }
-
-    return handling_needed;
-}
-
 // create new nodes for a program based on the set of nodes
 // method created to be used by propagate_constants to build sub program from constant nodes
 void program::prepare_nodes(std::set<std::shared_ptr<program_node>> const& nodes) {
@@ -532,7 +467,6 @@ void program::pre_optimize_graph(bool is_internal) {
 
     processing_order.calculate_BFS_processing_order();  // this method makes sense only for OOOQ (out of order execution queue)
 
-    bool output_size_handling_enabled = analyze_output_size_handling_need();
     for (auto& node : processing_order) {
         if (!node->is_type<data>())
             node->get_output_layouts();
@@ -543,7 +477,7 @@ void program::pre_optimize_graph(bool is_internal) {
         apply_opt_pass<prepare_quantization>();
     }
 
-    layout_optimizer lo(output_size_handling_enabled);
+    layout_optimizer lo;
     set_layout_optimizer_attributes(lo);
 
     reorder_factory rf;
@@ -580,7 +514,7 @@ void program::pre_optimize_graph(bool is_internal) {
 
     apply_opt_pass<handle_reshape>();
 
-    apply_opt_pass<prepare_padding>(output_size_handling_enabled);
+    apply_opt_pass<prepare_padding>();
 
     apply_opt_pass<remove_redundant_reorders>(lo, optimize_data);
 

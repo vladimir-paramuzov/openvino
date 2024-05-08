@@ -34,7 +34,7 @@ layout deconvolution_inst::calc_output_layout(deconvolution_node const& node, ke
         data_type = impl_param.get_output_element_type();
     }
 
-    auto pad = desc->pad;
+    auto pad = desc->pads_begin;
     auto strd = desc->stride;
 
     int32_t number_of_features = weights_layout.group() * weights_layout.ofm();
@@ -42,34 +42,6 @@ layout deconvolution_inst::calc_output_layout(deconvolution_node const& node, ke
     format out_fmt = input_layout.format;
     if (node.get_preferred_impl_type() == impl_types::onednn && node.get_preferred_output_fmt() != format::any) {
         out_fmt = node.get_preferred_output_fmt();
-    }
-
-    if (desc->with_output_size) {
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined output spatial X",
-                                       desc->output_size.spatial[0],
-                                       "value 0",
-                                       0,
-                                       "User-defined size of output layout must be positive (>= 1)");
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined output spatial Y",
-                                       desc->output_size.spatial[1],
-                                       "value 0",
-                                       0,
-                                       "User-defined size of output layout must be positive (>= 1)");
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined output spatial Z",
-                                       desc->output_size.spatial[2],
-                                       "value 0",
-                                       0,
-                                       "User-defined size of output layout must be positive (>= 1)");
-
-        tensor output_size(input_layout.batch(),
-                           number_of_features,
-                           desc->output_size.spatial[0],
-                           desc->output_size.spatial[1],
-                           desc->output_size.spatial[2]);
-        return {data_type, out_fmt, output_size};
     }
 
     int32_t off_factor = -2;
@@ -127,39 +99,9 @@ std::vector<layout> deconvolution_inst::calc_output_layouts(deconvolution_node c
     auto output_padding = desc->out_padding;
     auto output_partial_shape = desc->output_partial_shape;
 
-    int32_t number_of_features = weights_layout.group() * weights_layout.ofm();
-
     format out_fmt = input_layout.format;
     if (node.get_preferred_impl_type() == impl_types::onednn && node.get_preferred_output_fmt() != format::any) {
         out_fmt = node.get_preferred_output_fmt();
-    }
-
-    if (desc->with_output_size) {
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined output spatial X",
-                                       desc->output_size.spatial[0],
-                                       "value 0",
-                                       0,
-                                       "User-defined size of output layout must be positive (>= 1)");
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined output spatial Y",
-                                       desc->output_size.spatial[1],
-                                       "value 0",
-                                       0,
-                                       "User-defined size of output layout must be positive (>= 1)");
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined output spatial Z",
-                                       desc->output_size.spatial[2],
-                                       "value 0",
-                                       0,
-                                       "User-defined size of output layout must be positive (>= 1)");
-
-        tensor output_size(input_layout.batch(),
-                           number_of_features,
-                           desc->output_size.spatial[0],
-                           desc->output_size.spatial[1],
-                           desc->output_size.spatial[2]);
-        return {layout{output_type, out_fmt, output_size}};
     }
 
     std::vector<ShapeType> input_shapes = {
@@ -236,13 +178,9 @@ std::string deconvolution_inst::to_string(deconvolution_node const& node) {
 
     json_composite deconv_info;
     deconv_info.add("stride", cldnn::to_string(strd));
-    deconv_info.add("pad", cldnn::to_string(desc->pad));
+    deconv_info.add("pad", cldnn::to_string(desc->pads_begin));
+    deconv_info.add("pad", cldnn::to_string(desc->pads_end));
     deconv_info.add("groups", desc->groups);
-    if (desc->with_output_size) {
-        json_composite ud_out_size_info;
-        ud_out_size_info.add("size", desc->output_size.to_string());
-        deconv_info.add("with_user_defined_output_size", ud_out_size_info);
-    }
     std::stringstream ss_weights;
     ss_weights << node.weights().id();
     ss_weights << ", count: " << node.weights().get_output_layout().count();
@@ -264,7 +202,7 @@ deconvolution_inst::typed_primitive_inst(network& network, deconvolution_node co
     if (node.is_dynamic())
         return;
     auto stride = argument->stride;
-    auto pad = argument->pad;
+    auto pad = argument->pads_begin;
 
     auto input_layout = node.get_input_layout();
     auto output_layout = node.get_output_layout();

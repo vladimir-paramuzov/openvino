@@ -19,30 +19,17 @@ static void CreateAvgPoolOp(ProgramBuilder& p, const std::shared_ptr<ov::op::v1:
     auto inputs = p.GetInputInfo(op);
     std::string layerName = layer_type_name_ID(op);
 
-    std::shared_ptr<cldnn::pooling> pooling_prim = nullptr;
-    if (p.use_new_shape_infer()) {
-        pooling_prim = std::make_shared<cldnn::pooling>(layerName,
-                                                        inputs[0],
-                                                        op->get_exclude_pad() ? cldnn::pooling_mode::average_no_padding
-                                                                              : cldnn::pooling_mode::average,
-                                                        op->get_kernel(),
-                                                        op->get_strides(),
-                                                        op->get_pads_begin(),
-                                                        op->get_pads_end(),
-                                                        op->get_auto_pad(),
-                                                        op->get_rounding_type());
-    } else {
-        pooling_prim = std::make_shared<cldnn::pooling>(layerName,
-                                                        inputs[0],
-                                                        op->get_exclude_pad() ? cldnn::pooling_mode::average_no_padding
-                                                                              : cldnn::pooling_mode::average,
-                                                        op->get_kernel(),
-                                                        op->get_strides(),
-                                                        op->get_pads_begin(),
-                                                        op->get_pads_end(),
-                                                        tensor_from_dims(op->get_output_shape(0)),
-                                                        cldnn::element_type_to_data_type(op->get_output_element_type(0)));
-    }
+    auto pooling_prim = std::make_shared<cldnn::pooling>(layerName,
+                                                         inputs[0],
+                                                         op->get_exclude_pad() ? cldnn::pooling_mode::average_no_padding
+                                                                               : cldnn::pooling_mode::average,
+                                                         op->get_kernel(),
+                                                         op->get_strides(),
+                                                         op->get_pads_begin(),
+                                                         op->get_pads_end(),
+                                                         op->get_auto_pad(),
+                                                         op->get_rounding_type());
+
     p.add_primitive(*op, pooling_prim);
 }
 
@@ -51,28 +38,15 @@ static void CreateMaxPoolOp(ProgramBuilder& p, const std::shared_ptr<ov::op::v1:
     auto inputs = p.GetInputInfo(op);
     std::string layerName = layer_type_name_ID(op);
 
-    std::shared_ptr<cldnn::pooling> pooling_prim = nullptr;
-    if (p.use_new_shape_infer()) {
-        pooling_prim = std::make_shared<cldnn::pooling>(layerName,
-                                                        inputs[0],
-                                                        cldnn::pooling_mode::max,
-                                                        op->get_kernel(),
-                                                        op->get_strides(),
-                                                        op->get_pads_begin(),
-                                                        op->get_pads_end(),
-                                                        op->get_auto_pad(),
-                                                        op->get_rounding_type());
-    } else {
-        pooling_prim = std::make_shared<cldnn::pooling>(layerName,
-                                                        inputs[0],
-                                                        cldnn::pooling_mode::max,
-                                                        op->get_kernel(),
-                                                        op->get_strides(),
-                                                        op->get_pads_begin(),
-                                                        op->get_pads_end(),
-                                                        tensor_from_dims(op->get_output_shape(0)),
-                                                        cldnn::element_type_to_data_type(op->get_output_element_type(0)));
-    }
+    auto pooling_prim = std::make_shared<cldnn::pooling>(layerName,
+                                                         inputs[0],
+                                                         cldnn::pooling_mode::max,
+                                                         op->get_kernel(),
+                                                         op->get_strides(),
+                                                         op->get_pads_begin(),
+                                                         op->get_pads_end(),
+                                                         op->get_auto_pad(),
+                                                         op->get_rounding_type());
     p.add_primitive(*op, pooling_prim);
 }
 

@@ -95,34 +95,6 @@ layout pooling_inst::calc_output_layout(parent::typed_node const& node, kernel_i
                                        "Size Z (of pooling window) must be positive (>= 1)");
     }
 
-    if (desc->with_output_size) {
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined size of output X",
-                                       desc->output_size.spatial[0],
-                                       "",
-                                       0,
-                                       "User-defined size of output layout (spatial X) must be positive (>= 1)");
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined size of output Y",
-                                       desc->output_size.spatial[1],
-                                       "",
-                                       0,
-                                       "User-defined size of output layout (spatial Y) must be positive (>= 1)");
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined size of output Z",
-                                       desc->output_size.spatial[2],
-                                       "",
-                                       0,
-                                       "User-defined size of output layout (spatial Z) must be positive (>= 1)");
-
-        tensor output_size(input_layout.batch(),
-                           input_layout.feature(),
-                           desc->output_size.spatial[0],
-                           desc->output_size.spatial[1],
-                           desc->output_size.spatial[2]);
-        return {output_type, input_layout.format, output_size};
-    }
-
     // TODO: Check compatibility of output size calculation (with caffe).
     tensor size(1);
     for (size_t i = 0; i < window_size.size(); i++) {
@@ -172,34 +144,6 @@ std::vector<layout> pooling_inst::calc_output_layouts(pooling_node const& /*node
 
     if (input_shape.is_dynamic()) {
         return { layout{output_shape, input_layout.data_type, input_layout.format} };
-    }
-
-    if (desc->with_output_size) {
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined size of output X",
-                                       desc->output_size.spatial[0],
-                                       "",
-                                       0,
-                                       "User-defined size of output layout (spatial X) must be positive (>= 1)");
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined size of output Y",
-                                       desc->output_size.spatial[1],
-                                       "",
-                                       0,
-                                       "User-defined size of output layout (spatial Y) must be positive (>= 1)");
-        CLDNN_ERROR_LESS_OR_EQUAL_THAN(desc->id,
-                                       "User-defined size of output Z",
-                                       desc->output_size.spatial[2],
-                                       "",
-                                       0,
-                                       "User-defined size of output layout (spatial Z) must be positive (>= 1)");
-
-        tensor output_size(input_layout.batch(),
-                           input_layout.feature(),
-                           desc->output_size.spatial[0],
-                           desc->output_size.spatial[1],
-                           desc->output_size.spatial[2]);
-        return {{output_dtype, input_layout.format, output_size}};
     }
 
     auto kernel_size = desc->size;
@@ -254,11 +198,6 @@ std::string pooling_inst::to_string(pooling_node const& node) {
     pooling_info.add("mode", mode);
     pooling_info.add("stride", cldnn::to_string(strd));
     pooling_info.add("kernel size", cldnn::to_string(kernel_size));
-    if (desc->with_output_size) {
-        json_composite ud_out_size_info;
-        ud_out_size_info.add("size", desc->output_size.to_string());
-        pooling_info.add("with_user_defined_output_size", ud_out_size_info);
-    }
 
     node_info->add("pooling info", pooling_info);
     node_info->dump(primitive_description);

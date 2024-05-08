@@ -125,7 +125,6 @@ static void CreateConvolutionBackpropDataOp(ProgramBuilder& p, const std::shared
         weightsName.pid = permuteName;
     }
 
-    std::vector<cldnn::primitive_id> weights = {weightsName.pid};
     const bool weights_have_group_dim = false;
 
     auto strides = op->get_strides();
@@ -138,25 +137,26 @@ static void CreateConvolutionBackpropDataOp(ProgramBuilder& p, const std::shared
         strides.resize(std::max<size_t>(2, strides.size()), 1);
         dilations.resize(std::max<size_t>(2, strides.size()), 1);
         pads_begin.resize(std::max<size_t>(2, pads_begin.size()), 0);
+        pads_end.resize(std::max<size_t>(2, pads_end.size()), 0);
         auto deconvPrim = cldnn::deconvolution(layerName,
                                                inputs[0],
-                                               weights,
-                                               {},
+                                               weightsName.pid,
+                                               "",
                                                1,
                                                strides,
-                                               pads_begin,
                                                dilations,
-                                               tensor_from_dims(op->get_output_tensor(0).get_shape()),
+                                               pads_begin,
+                                               pads_end,
+                                               output_padding,
                                                weights_have_group_dim);
         p.add_primitive(*op, deconvPrim);
     } else {
         auto deconvPrim = cldnn::deconvolution(layerName,
                                                inputs[0],
-                                               weights,
-                                               {},
+                                               weightsName.pid,
+                                               "",
                                                1,
                                                strides,
-                                               pads_begin,
                                                dilations,
                                                pads_begin,
                                                pads_end,
@@ -214,7 +214,6 @@ static void CreateGroupConvolutionBackpropDataOp(ProgramBuilder& p, const std::s
         weightsName.pid = permuteName;
     }
 
-    std::vector<cldnn::primitive_id> weights = {weightsName.pid};
     const bool weights_have_group_dim = true;
 
     auto strides = op->get_strides();
@@ -227,26 +226,27 @@ static void CreateGroupConvolutionBackpropDataOp(ProgramBuilder& p, const std::s
         strides.resize(std::max<size_t>(2, strides.size()), 1);
         dilations.resize(std::max<size_t>(2, strides.size()), 1);
         pads_begin.resize(std::max<size_t>(2, pads_begin.size()), 0);
+        pads_end.resize(std::max<size_t>(2, pads_end.size()), 0);
 
         auto deconvPrim = cldnn::deconvolution(layerName,
                                                inputs[0],
-                                               weights,
-                                               {},
+                                               weightsName.pid,
+                                               "",
                                                groups,
                                                strides,
-                                               pads_begin,
                                                dilations,
-                                               tensor_from_dims(op->get_output_tensor(0).get_shape()),
+                                               pads_begin,
+                                               pads_end,
+                                               output_padding,
                                                weights_have_group_dim);
         p.add_primitive(*op, deconvPrim);
     } else {
         auto deconvPrim = cldnn::deconvolution(layerName,
                                                inputs[0],
-                                               weights,
-                                               {},
+                                               weightsName.pid,
+                                               "",
                                                groups,
                                                strides,
-                                               pads_begin,
                                                dilations,
                                                pads_begin,
                                                pads_end,

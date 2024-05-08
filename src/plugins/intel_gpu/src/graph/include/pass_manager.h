@@ -198,12 +198,11 @@ private:
 
 class prepare_padding : public base_pass {
 public:
-    explicit prepare_padding(bool output_size_handling_enabled_switch)
-        : base_pass("prepare_padding"), output_size_handling_enabled(output_size_handling_enabled_switch) {}
+    explicit prepare_padding()
+        : base_pass("prepare_padding") {}
     static cldnn::padding get_needed_padding_for_convolution(convolution_node& node);
 private:
     void run(program& p) override;
-    bool output_size_handling_enabled;
 };
 
 class post_input_reorder : public base_pass {

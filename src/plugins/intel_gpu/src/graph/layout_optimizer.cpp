@@ -514,8 +514,7 @@ bool layout_optimizer::can_fuse_reorder_to_prev(program_node& prev, reorder_node
 namespace {
 bool should_use_winograd_2x3_s1(const convolution_node& node,
                                 layout const& input_layout,
-                                layout const& weights_layout,
-                                bool output_size_handling_enabled) {
+                                layout const& weights_layout) {
     bool disable_winograd_conv = node.get_program().get_config().get_property(ov::intel_gpu::disable_winograd_convolution);
     if (disable_winograd_conv)
         return false;
@@ -533,7 +532,6 @@ bool should_use_winograd_2x3_s1(const convolution_node& node,
         || weights_layout.batch() % 64 != 0  // current algorithm is effective for ofm to be multiply of 64
         || any_not_one(prim->stride)               // stride has to be 1x1 by definition
         || any_not_one(prim->dilation)             // no support for dilation
-        || output_size_handling_enabled            // This condition is weird. Need to revise it and replace with something meaningful
         || (input_layout.count() > 3000000)        // limit max input size as winograd consumes more memory
         || (input_layout.count() < 50000)          // limit min input size as winograd is not effective for small input
         || (input_layout.spatial(0) < 8 &&
@@ -545,8 +543,8 @@ bool should_use_winograd_2x3_s1(const convolution_node& node,
 }
 }  // namespace
 
-layout_optimizer::layout_optimizer(bool output_size_handling_enabled)
-    : _optimization_attributes(), _output_size_handling_enabled(output_size_handling_enabled), _total_conv(0) {
+layout_optimizer::layout_optimizer()
+    : _optimization_attributes(), _total_conv(0) {
     for (auto& format : optimized_formats) {
         _optimized_conv_count.insert({format, 0});
     }
@@ -614,7 +612,7 @@ bool layout_optimizer::convolution_byxf_opt(const layout& input_layout,
          all_zeroes(conv->padding_begin) &&
          all_zeroes(conv->padding_end)) ||
         // Winograd
-        should_use_winograd_2x3_s1(node, input_layout, weights_layout, _output_size_handling_enabled))
+        should_use_winograd_2x3_s1(node, input_layout, weights_layout))
         return true;
 
     return false;
@@ -1224,7 +1222,7 @@ format layout_optimizer::get_expected_format(convolution_node const& node) {
                     output_layout.format == format::os_is_yx_osv16_isv4) {
             // imad case
             // nothing to do, just go out from here.
-        } else if (layout_optimizer::convolution_bfyx_opt(output_layout, weights_layout, prim) || _output_size_handling_enabled || node.get_transposed()) {
+        } else if (layout_optimizer::convolution_bfyx_opt(output_layout, weights_layout, prim) || node.get_transposed()) {
             {
                 if (output_layout.format == format::b_fs_zyx_fsv16 || output_layout.format == format::bs_fs_zyx_bsv16_fsv16)
                     expected_format = cldnn::format::bfzyx;
@@ -2170,7 +2168,7 @@ bool layout_optimizer::is_format_optimized(const convolution_node& node, const f
         case format::b_fs_yx_fsv16:
             return convolution_b_fs_yx_fsv16_opt(input_layout, output_layout, weights_layout, prim, use_weak_restrictions) &&
                    // Work-around for inability to use b_fs_yx_fsv16 and winograd together
-                   !should_use_winograd_2x3_s1(node, input_layout, weights_layout, _output_size_handling_enabled);
+                   !should_use_winograd_2x3_s1(node, input_layout, weights_layout);
         case format::b_fs_zyx_fsv16:
         case format::bs_fs_zyx_bsv16_fsv16:
             return convolution_b_fs_zyx_fsv16_opt(input_layout, output_layout, weights_layout, prim);

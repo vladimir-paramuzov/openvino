@@ -134,7 +134,7 @@ TEST(remove_redundant_reorders, skip_reorder_fusing_when_sibling_not_support_pad
     auto prog = program::build_program(engine, topology, config, false, true);
     config.set_property(ov::intel_gpu::optimize_data(true));
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     bool optimize_data = config.get_property(ov::intel_gpu::optimize_data);
     program_wrapper::apply_opt_pass<remove_redundant_reorders>(*prog, lo, optimize_data);
@@ -164,7 +164,7 @@ TEST(remove_redundant_reorders, not_to_fuse_reshape_with_fused_prims) {
     config.set_property(ov::intel_gpu::optimize_data(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
     bool optimize_data = config.get_property(ov::intel_gpu::optimize_data);
@@ -206,7 +206,7 @@ TEST(remove_redundant_reorders, not_to_fuse_permute) {
     auto prog = program::build_program(engine, topology, config, false, true);
     ASSERT_NE(prog, nullptr);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
     bool opt_data = config.get_property(ov::intel_gpu::optimize_data);
 
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
@@ -268,7 +268,7 @@ TEST(remove_redundant_reorders, remove_fused) {
     config.set_property(ov::intel_gpu::optimize_data(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
     program_wrapper::apply_opt_pass<prepare_primitive_fusing>(*prog, lo);
     bool optimize_data = config.get_property(ov::intel_gpu::optimize_data);
     program_wrapper::apply_opt_pass<remove_redundant_reorders>(*prog, lo, optimize_data);
@@ -297,7 +297,7 @@ TEST(remove_redundant_reorders, fuse_reorder_to_prev_mvn_dyn) {
     config.set_property(ov::intel_gpu::optimize_data(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
     bool optimize_data = config.get_property(ov::intel_gpu::optimize_data);
     program_wrapper::apply_opt_pass<remove_redundant_reorders>(*prog, lo, optimize_data);
 
@@ -341,7 +341,7 @@ TEST(remove_redundant_reorders, fuse_reorder_to_prev_concat_dyn) {
     config.set_property(ov::intel_gpu::optimize_data(true));
     auto prog = program::build_program(engine, topology, config, false, true);
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
     bool optimize_data = config.get_property(ov::intel_gpu::optimize_data);
     program_wrapper::apply_opt_pass<remove_redundant_reorders>(*prog, lo, optimize_data);
 

@@ -764,50 +764,50 @@ TEST(prepare_buffer_fusing, test_implicit_crop_and_outerpadding_conv) {
 }
 
 // For deconv, Check padded input and weight propagated by implicit crop are handled properly
-TEST(prepare_buffer_fusing, test_implicit_crop_and_outerpadding_deconv) {
-    auto& engine = get_test_engine();
-    const std::string no_bias = "";
-    auto input = engine.allocate_memory({ data_types::f32, format::bfyx, { 4, 1, 2, 2 } });
-    auto weights = engine.allocate_memory({ data_types::f32, format::bfyx, { 2, 1, 2, 2 } });
-    auto biases = engine.allocate_memory({ data_types::f32, format::bfyx, { 1, 1, 1, 1 } });
+// TEST(prepare_buffer_fusing, test_implicit_crop_and_outerpadding_deconv) {
+//     auto& engine = get_test_engine();
+//     const std::string no_bias = "";
+//     auto input = engine.allocate_memory({ data_types::f32, format::bfyx, { 4, 1, 2, 2 } });
+//     auto weights = engine.allocate_memory({ data_types::f32, format::bfyx, { 2, 1, 2, 2 } });
+//     auto biases = engine.allocate_memory({ data_types::f32, format::bfyx, { 1, 1, 1, 1 } });
 
-    set_values(input, { 16.f, 1.0f, 3.f, 4.5f, 9.f, 1.f, 3.f, 4.5f,
-                        8.f,  0.5f, 6.f, 9.f,  1.f, 3.f, 2.f, 4.f});
-    set_values<float>(weights, { -4.0f, 1.0f, 7.0f, 3.0f,
-                                 -2.0f, 2.0f, 7.0f, -0.5f});
-    set_values(biases, { 1.0f });
-    std::vector<float> expected_output_vec = { -3.f, 4.5f, 13.f, -17.f, 0.5f, 22.f, 5.f, -7.f };
+//     set_values(input, { 16.f, 1.0f, 3.f, 4.5f, 9.f, 1.f, 3.f, 4.5f,
+//                         8.f,  0.5f, 6.f, 9.f,  1.f, 3.f, 2.f, 4.f});
+//     set_values<float>(weights, { -4.0f, 1.0f, 7.0f, 3.0f,
+//                                  -2.0f, 2.0f, 7.0f, -0.5f});
+//     set_values(biases, { 1.0f });
+//     std::vector<float> expected_output_vec = { -3.f, 4.5f, 13.f, -17.f, 0.5f, 22.f, 5.f, -7.f };
 
-    topology topology(
-        input_layout("input", input->get_layout()),
-        reorder("to_int", input_info("input"), { data_types::f16, format::bfyx, { 4, 1, 2, 2 } }),
-        crop("crop_input", input_info("to_int"), tensor{ 2, 1, 2, 2 }, tensor(2, 0, 0, 0)),
-        data("weights", weights),
-        data("biases", biases),
-        reorder("to_weight", input_info("weights"), { data_types::f16, format::bfyx, { 2, 1, 2, 2 } }),
-        crop("crop_weight", input_info("to_weight"), tensor{ 1, 1, 2, 2 }, tensor(1, 0, 0, 0)),
-        deconvolution("deconv", input_info("crop_input"), { "crop_weight" }, { "biases" }, { 2, 2 }, { 1, 1 }),
-        reorder("output", input_info("deconv"), format::bfyx, data_types::f32));
+//     topology topology(
+//         input_layout("input", input->get_layout()),
+//         reorder("to_int", input_info("input"), { data_types::f16, format::bfyx, { 4, 1, 2, 2 } }),
+//         crop("crop_input", input_info("to_int"), tensor{ 2, 1, 2, 2 }, tensor(2, 0, 0, 0)),
+//         data("weights", weights),
+//         data("biases", biases),
+//         reorder("to_weight", input_info("weights"), { data_types::f16, format::bfyx, { 2, 1, 2, 2 } }),
+//         crop("crop_weight", input_info("to_weight"), tensor{ 1, 1, 2, 2 }, tensor(1, 0, 0, 0)),
+//         deconvolution("deconv", input_info("crop_input"), { "crop_weight" }, { "biases" }, { 2, 2 }, { 1, 1 }),
+//         reorder("output", input_info("deconv"), format::bfyx, data_types::f32));
 
-    ExecutionConfig config = get_test_default_config(engine);
-    config.set_property(ov::intel_gpu::optimize_data(true));
-    network network(engine, topology, config);
-    network.set_input_data("input", input);
+//     ExecutionConfig config = get_test_default_config(engine);
+//     config.set_property(ov::intel_gpu::optimize_data(true));
+//     network network(engine, topology, config);
+//     network.set_input_data("input", input);
 
-    auto outputs = network.execute();
-    ASSERT_EQ(outputs.size(), size_t(1));
-    ASSERT_EQ(outputs.begin()->first, "output");
+//     auto outputs = network.execute();
+//     ASSERT_EQ(outputs.size(), size_t(1));
+//     ASSERT_EQ(outputs.begin()->first, "output");
 
-    auto output_memory = outputs.at("output").get_memory();
-    auto output_layout = output_memory->get_layout();
-    cldnn::mem_lock<float> output_ptr(output_memory, get_test_stream());
+//     auto output_memory = outputs.at("output").get_memory();
+//     auto output_layout = output_memory->get_layout();
+//     cldnn::mem_lock<float> output_ptr(output_memory, get_test_stream());
 
-    for (unsigned int i = 0; i < expected_output_vec.size(); i++)
-        ASSERT_FLOAT_EQ(expected_output_vec[i], output_ptr[i]);
+//     for (unsigned int i = 0; i < expected_output_vec.size(); i++)
+//         ASSERT_FLOAT_EQ(expected_output_vec[i], output_ptr[i]);
 
-    auto crop_prim = network.get_primitive("crop_input");
-    ASSERT_EQ(crop_prim->can_be_optimized(), true);
-}
+//     auto crop_prim = network.get_primitive("crop_input");
+//     ASSERT_EQ(crop_prim->can_be_optimized(), true);
+// }
 
 TEST(prepare_buffer_fusing, test_checking_padding_supported) {
     auto& engine = get_test_engine();

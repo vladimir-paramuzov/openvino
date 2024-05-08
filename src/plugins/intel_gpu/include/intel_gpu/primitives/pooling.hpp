@@ -58,37 +58,7 @@ struct pooling : public primitive_base<pooling> {
           pads_begin(pads_begin),
           pads_end(pads_end),
           auto_pad(auto_pad),
-          rounding_type(rounding_type),
-          with_output_size(false) {}
-
-    /// @brief Constructs pooling primitive with known output shape.
-    /// @param id This primitive id.
-    /// @param input Input primitive id.
-    /// @param mode Pooling mode.
-    /// @param stride Defines shift in input buffer between adjacent calculations of output values.
-    /// @param size Pooling kernel size.
-    /// @param pad Defines logical pad value added to input tensor.
-    /// @param output_size User-defined output data size of the primitive (w/o padding).
-    pooling(const primitive_id& id,
-            const input_info& input,
-            pooling_mode mode,
-            const ov::Shape& size,
-            const ov::Strides& stride,
-            const ov::Shape& pads_begin,
-            const ov::Shape& pads_end,
-            tensor output_size,
-            const data_types output_data_type,
-            const padding& output_padding = padding())
-        : primitive_base(id, {input}, {output_padding}, {optional_data_type{output_data_type}}),
-          mode(static_cast<pooling_mode>(mode)),
-          size(size),
-          stride(stride),
-          pads_begin(pads_begin),
-          pads_end(pads_end),
-          auto_pad(ov::op::PadType::EXPLICIT),
-          rounding_type(ov::op::RoundingType::CEIL),
-          with_output_size(true),
-          output_size(output_size) {}
+          rounding_type(rounding_type) {}
 
     /// @brief Constructs pooling primitive that supports MaxPool features from opset8 (dilation and indices output).
     /// @param id This primitive id.
@@ -101,7 +71,6 @@ struct pooling : public primitive_base<pooling> {
     /// @param pad_end Defines a shift, relative to the end of padding shape.
     /// @param axis First dimension of input that should be used to calculate the upper bound of index output.
     /// @param index_element_type Data type of index output.
-    /// @param output_size User-defined output data size of the primitive (w/o padding).
     pooling(const primitive_id& id,
             const input_info& input,
             const input_info& indices_output,
@@ -128,8 +97,6 @@ struct pooling : public primitive_base<pooling> {
               auto_pad(auto_pad),
               rounding_type(rounding_type),
               axis(axis),
-              with_output_size(true),
-              output_size(output_size),
               index_element_type(index_element_type),
               maxPoolOpset8Features(true) {}
 
@@ -153,10 +120,6 @@ struct pooling : public primitive_base<pooling> {
     ov::op::RoundingType rounding_type = ov::op::RoundingType::CEIL;
     /// @brief first dimension of input that should be used to calculate the upper bound of index output.
     int64_t axis = 0;
-    /// @brief Indicates that the primitive has user-defined output size (non-zero value).
-    bool with_output_size = true;
-    /// @brief User-defined output data size of the primitive (w/o padding).
-    tensor output_size;
     /// @brief type of index output
     data_types index_element_type = data_types::i32;
     bool maxPoolOpset8Features{false};
@@ -212,8 +175,6 @@ struct pooling : public primitive_base<pooling> {
         ob << make_data(&auto_pad, sizeof(ov::op::PadType));
         ob << make_data(&rounding_type, sizeof(ov::op::RoundingType));
         ob << axis;
-        ob << with_output_size;
-        ob << output_size;
         ob << make_data(&index_element_type, sizeof(data_types));
         ob << maxPoolOpset8Features;
     }
@@ -230,8 +191,6 @@ struct pooling : public primitive_base<pooling> {
         ib >> make_data(&auto_pad, sizeof(ov::op::PadType));
         ib >> make_data(&rounding_type, sizeof(ov::op::RoundingType));
         ib >> axis;
-        ib >> with_output_size;
-        ib >> output_size;
         ib >> make_data(&index_element_type, sizeof(data_types));
         ib >> maxPoolOpset8Features;
     }

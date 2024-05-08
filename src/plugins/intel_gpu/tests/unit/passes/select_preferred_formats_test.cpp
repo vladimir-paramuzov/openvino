@@ -38,7 +38,7 @@ TEST(test_select_preferred_formats, setting_target_conv_format) {
     ov::intel_gpu::ImplementationDesc impl = { format::b_fs_yx_fsv16, std::string(""), impl_types::onednn };
     config.set_property(ov::intel_gpu::force_implementations(ov::intel_gpu::ImplForcingMap{ {"conv1", impl} }));
 
-    layout_optimizer lo(true);
+    layout_optimizer lo;
     auto prog = program::build_program(engine, topology, config, false, true);
 
     // It initializes output_layout.

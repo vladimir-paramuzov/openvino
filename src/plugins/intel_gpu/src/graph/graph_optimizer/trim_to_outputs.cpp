@@ -6,7 +6,6 @@
 
 // ToDo: remove those include with the appropriate code below once we will have support for multiple outputs of a
 // primitive
-#include "pooling_inst.h"
 #include <vector>
 #include <queue>
 

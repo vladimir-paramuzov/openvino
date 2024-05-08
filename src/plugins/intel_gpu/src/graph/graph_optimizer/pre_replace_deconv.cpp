@@ -34,8 +34,8 @@ void pre_replace_deconv::run(program& p) {
             auto& weights_node = deconv_node.weights();
             auto deconv_prim = deconv_node.typed_desc();
             auto filter_layout = weights_node.get_output_layout().convert_to_weights_layout(deconv_prim->grouped_weights_shape);
-            auto weights_nodes_id = deconv_prim->weights;
-            auto biases_nodes_id = deconv_prim->bias;
+            const auto& weights_nodes_id = deconv_prim->weights;
+            const auto& biases_nodes_id = deconv_prim->bias;
             auto& input_node = deconv_node.get_dependency(0);
             auto input_layout = deconv_node.get_input_layout(0);
             const primitive_id deconv_node_id = deconv_node.id();
@@ -65,23 +65,19 @@ void pre_replace_deconv::run(program& p) {
                 auto input_pshape = input_layout.get_partial_shape();
                 auto spatial_rank = output_layout.get_spatial_rank();
                 auto stride = deconv_prim->stride;
-                auto pad = deconv_prim->pad;
+                auto pad = deconv_prim->pads_begin;
                 ov::Strides dilation(spatial_rank, 1);
                 auto output_padding = deconv_prim->output_paddings[0];
                 auto grouped_weights_shape = deconv_prim->grouped_weights_shape;
 
                 // remove deconvolution node and its connections to weights and biases, rename it and move to the optimized list
                 p.remove_connection(input_node, deconv_node);
-                std::vector<std::shared_ptr<program_node>> weight_connections;
-                for (auto& weights_id : weights_nodes_id) {
-                    auto weights_iter = p.nodes_map.find(weights_id);
-                    if (weights_iter == p.nodes_map.end())
-                        continue;
+                auto weights_iter = p.nodes_map.find(weights_nodes_id);
+                if (weights_iter == p.nodes_map.end())
+                    continue;
 
-                    auto weights_node_ptr = weights_iter->second;
-                    weight_connections.push_back(weights_node_ptr);
-                    p.remove_connection(*weights_node_ptr, deconv_node);
-                }
+                auto weights_node_ptr = weights_iter->second;
+                p.remove_connection(*weights_node_ptr, deconv_node);
 
                 ov::CoordinateDiff pad_begin(spatial_rank, 0);
                 ov::CoordinateDiff pad_end(spatial_rank, 0);
@@ -95,16 +91,13 @@ void pre_replace_deconv::run(program& p) {
                     pad_end[i] = (out_dim - 1) * stride[i] + fs - in_dim - pad_begin[i];
                 }
 
-                std::vector<std::shared_ptr<program_node>> bias_connections;
-                for (auto& bias_id : biases_nodes_id) {
-                    auto bias_iter = p.nodes_map.find(bias_id);
-                    if (bias_iter == p.nodes_map.end())
-                        continue;
-
-                    auto bias_id_node_ptr = bias_iter->second;
-                    bias_connections.push_back(bias_id_node_ptr);
+                std::shared_ptr<cldnn::program_node> bias_id_node_ptr = nullptr;
+                auto bias_iter = p.nodes_map.find(biases_nodes_id);
+                if (bias_iter != p.nodes_map.end()) {
+                    bias_id_node_ptr = bias_iter->second;
                     p.remove_connection(*bias_id_node_ptr, deconv_node);
                 }
+
                 auto was_output = deconv_node.is_output();
                 if (was_output) {
                     deconv_node.set_output(false);
@@ -117,8 +110,8 @@ void pre_replace_deconv::run(program& p) {
                 // create convolution primitive
                 auto conv_prim = std::make_shared<convolution>(deconv_node_id,
                                                                input_node_id,
-                                                               weights_nodes_id[0],
-                                                               biases_nodes_id.empty() ? "" : biases_nodes_id[0],
+                                                               weights_nodes_id,
+                                                               biases_nodes_id,
                                                                groups,
                                                                stride,
                                                                dilation,
@@ -134,14 +127,9 @@ void pre_replace_deconv::run(program& p) {
 
                 // add connections input->convolution, weights->convolution and bias->convolution
                 p.add_connection(input_node, conv_node);
-
-                for (auto& weight_node : weight_connections) {
-                    p.add_connection(*weight_node, conv_node);
-                }
-
-                for (auto& bias_node : bias_connections) {
-                    p.add_connection(*bias_node, conv_node);
-                }
+                p.add_connection(*weights_node_ptr, conv_node);
+                if (bias_id_node_ptr)
+                    p.add_connection(*bias_id_node_ptr, conv_node);
 
                 auto deconv_node_itr = p.nodes_map.find(rename_id);
                 if (deconv_node_itr != p.nodes_map.end()) {
@@ -165,18 +153,18 @@ void pre_replace_deconv::run(program& p) {
                deconv_node.get_output_layout().feature() == 1 &&
                deconv_prim->stride[deconv_prim->stride.size() - 1] == 2 && deconv_prim->stride[deconv_prim->stride.size() - 2] == 2 &&
                filter_layout.spatial(0) == 9 && filter_layout.spatial(1) == 9 &&
-               deconv_prim->pad[deconv_prim->pad.size() - 1] == 4 && deconv_prim->pad[deconv_prim->pad.size() - 2]  == 4 &&
-               weights_nodes_id.size() == 1 && biases_nodes_id.size() == 1 &&
+               deconv_prim->pads_begin[deconv_prim->pads_begin.size() - 1] == 4 && deconv_prim->pads_begin[deconv_prim->pads_begin.size() - 2]  == 4 &&
+               !biases_nodes_id.empty() &&
                input_node.get_output_layout().format == format::bfyx) {
                 const auto scale_factor = deconv_prim->stride[deconv_prim->stride.size() - 1];
                 auto spatial_rank = deconv_node.get_output_layout().get_spatial_rank();
 
-                const auto& weight_node_id = weights_nodes_id.front();
+                const auto& weight_node_id = weights_nodes_id;
                 auto weights_node_ptr = p.nodes_map.find(weight_node_id)->second;
                 const auto& weights_layout = weights_node_ptr->get_output_layout();
                 const auto& weights_data_type = weights_layout.data_type;
 
-                const auto& bias_node_id = biases_nodes_id.front();
+                const auto& bias_node_id = biases_nodes_id;
                 auto bias_id_node_ptr = p.nodes_map.find(bias_node_id)->second;
                 const auto bias_data_type = bias_id_node_ptr->get_output_layout().data_type;
 

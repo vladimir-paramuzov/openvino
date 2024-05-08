@@ -36,7 +36,7 @@ TEST(prepare_padding, groupconv_with_output) {
     config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     auto prog = program::build_program(engine, topo, config, false, true);
     reorder_factory rf;
-    program_wrapper::apply_opt_pass<prepare_padding>(*prog, true);
+    program_wrapper::apply_opt_pass<prepare_padding>(*prog);
     const auto& node = prog->get_node("reorder_input_conv");
     auto params = node.get_kernel_impl_params();
     ASSERT_EQ(params->get_output_layout().data_padding.upper_size().spatial[2], 0);

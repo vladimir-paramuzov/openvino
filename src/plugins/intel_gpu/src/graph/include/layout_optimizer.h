@@ -112,8 +112,6 @@ public:
 
 private:
     optimization_attributes _optimization_attributes;
-    // TODO: Remove once we will get full support for input/output padding in all primitive implementations.
-    bool _output_size_handling_enabled;
 
     std::map<primitive_id, std::pair<format::type, impl_types>> _forcing_map;
     static const std::vector<std::pair<format::type, bool>> optimized_formats;  // pair of format type and allowed weak restriction
@@ -172,7 +170,7 @@ private:
     bool deps_for_convolution_byxf_opt(program_node const& node, uint32_t depth);
 
 public:
-    explicit layout_optimizer(bool output_size_handling_enabled = true);
+    layout_optimizer();
 
     format get_preferred_format(program_node& node);
     bool all_users_simple_format_until_output(program_node& origin_node, program_node& cur_node, int32_t cur_depth, int32_t max_depth);
