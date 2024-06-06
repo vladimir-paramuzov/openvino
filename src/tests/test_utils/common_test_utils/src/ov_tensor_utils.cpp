@@ -431,8 +431,19 @@ public:
         if (!incorrect_values_abs.empty() && equal(1.f, topk_threshold) ||
             incorrect_values_abs.size() > static_cast<int>(std::floor(topk_threshold * tensor_size))) {
 #ifdef NDEBUG
-            std::string msg = "[ COMPARATION ] COMPARATION IS FAILED!";
-            msg += "  Use DEBUG mode to print `incorrect_values_abs` and get detailed information!";
+            std::string msg = "[ COMPARATION ] COMPARATION IS FAILED! incorrect elem counter: ";
+            msg += std::to_string(incorrect_values_abs.size());
+            msg += " among ";
+            msg += std::to_string(tensor_size);
+            msg += " shapes.";
+            for (auto val : incorrect_values_abs) {
+                std::cout << "\nExpected: " << val.expected_value << " Actual: " << val.actual_value
+                          << " Coordinate: " <<  val.coordinate
+                          << " Diff: " << std::fabs(val.expected_value - val.actual_value)
+                          << " calculated_abs_threshold: " << val.threshold << " abs_threshold: " << abs_threshold
+                          << " rel_threshold: " << rel_threshold << "\n";
+                break;
+            }
 #else
             std::string msg = "[ COMPARATION ] COMPARATION IS FAILED! incorrect elem counter: ";
             msg += std::to_string(incorrect_values_abs.size());
@@ -441,6 +452,7 @@ public:
             msg += " shapes.";
             for (auto val : incorrect_values_abs) {
                 std::cout << "\nExpected: " << val.expected_value << " Actual: " << val.actual_value
+                          << " Coordinate: " <<  val.coordinate
                           << " Diff: " << std::fabs(val.expected_value - val.actual_value)
                           << " calculated_abs_threshold: " << val.threshold << " abs_threshold: " << abs_threshold
                           << " rel_threshold: " << rel_threshold << "\n";
