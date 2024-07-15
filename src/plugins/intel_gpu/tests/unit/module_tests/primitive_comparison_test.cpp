@@ -85,10 +85,10 @@ TEST(primitive_comparison, gemm) {
 }
 
 TEST(primitive_comparison, fully_connected) {
-    auto fc_prim = fully_connected("fc", input_info("input"), "weights", "bias", {}, 2);
-    auto fc_prim_eq = fully_connected("fc_eq", input_info("input_eq"), "weights_eq", "bias_eq", {}, 2);
-    auto fc_prim_bias = fully_connected("fc", input_info("input"), "weights", "", {}, 2);
-    auto fc_prim_input_size = fully_connected("fc", input_info("input"), "weights", "bias", {}, 4);
+    auto fc_prim = fully_connected("fc", input_info("input"), "weights", "bias", 2);
+    auto fc_prim_eq = fully_connected("fc_eq", input_info("input_eq"), "weights_eq", "bias_eq", 2);
+    auto fc_prim_bias = fully_connected("fc", input_info("input"), "weights", "", 2);
+    auto fc_prim_input_size = fully_connected("fc", input_info("input"), "weights", "bias", 4);
 
     ASSERT_EQ(fc_prim, fc_prim_eq);
     ASSERT_NE(fc_prim, fc_prim_bias);
