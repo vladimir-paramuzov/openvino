@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include "openvino/core/except.hpp"
 #include "openvino/op/constant.hpp"
 #include "openvino/op/split.hpp"
 #include "openvino/op/variadic_split.hpp"
@@ -243,9 +244,16 @@ void ProgramBuilder::CreateSingleLayerPrimitive(const std::shared_ptr<ov::Node>&
     }
 
     if (!is_created) {
-        OPENVINO_THROW("Operation: ", op->get_friendly_name(),
+        std::stringstream ss;
+        ov::write_all_to_stream(ss, "Operation: ", op->get_friendly_name(),
                        " of type ", op->get_type_name(),
-                       "(", op->get_type_info().version_id, ") is not supported");
+                       "(", op->get_type_info().version_id, ") is not supported.");
+        if (op->has_evaluate()) {
+            std::cout << ss.str() << " Fallback to Op::evaluate()" << std::endl;
+            CreateGenericOp(*this, op);
+        } else {
+            OPENVINO_THROW(ss.str());
+        }
     }
 }
 

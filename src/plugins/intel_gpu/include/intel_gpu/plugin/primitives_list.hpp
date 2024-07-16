@@ -119,7 +119,7 @@ REGISTER_FACTORY(v1, LogicalXor);
 REGISTER_FACTORY(v1, MaxPool);
 REGISTER_FACTORY(v1, Maximum);
 REGISTER_FACTORY(v1, Minimum);
-REGISTER_FACTORY(v1, Multiply);
+// REGISTER_FACTORY(v1, Multiply);
 REGISTER_FACTORY(v1, NotEqual);
 // REGISTER_FACTORY(v1, NonMaxSuppression); Supported via v1 -> v5 internal conversion
 REGISTER_FACTORY(v1, OneHot);
