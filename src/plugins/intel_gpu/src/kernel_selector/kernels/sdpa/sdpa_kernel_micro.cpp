@@ -448,6 +448,30 @@ JitConstants SDPAKernelMicro::GetJitConstants(const sdpa_params& params, const m
         return definitions;
     };
 
+    auto convert_sizes = [](std::string target_prefix, std::string source_prefix, const std::vector<int64_t> order) {
+        JitConstants definitions({});
+
+        std::vector<std::string> target_definitions = {
+            target_prefix + "_D0",
+            target_prefix + "_D1",
+            target_prefix + "_D2",
+            target_prefix + "_D3",
+        };
+
+        std::vector<std::string> source_definitions = {
+            source_prefix + "_BATCH_NUM",
+            source_prefix + "_FEATURE_NUM",
+            source_prefix + "_Y_SIZE",
+            source_prefix + "_X_SIZE",
+        };
+
+        for (size_t i = 0; i < target_definitions.size(); i++) {
+            definitions.AddConstant(MakeJitConstant(target_definitions[i], source_definitions[order[i]]));
+        }
+
+        return definitions;
+    };
+
     jit.Merge(convert_strides("QRY", "INPUT0", prim_params.input0_order));
     jit.Merge(convert_strides("KEY", "INPUT1", prim_params.input1_order));
     jit.Merge(convert_strides("VAL", "INPUT2", prim_params.input2_order));
@@ -457,6 +481,12 @@ JitConstants SDPAKernelMicro::GetJitConstants(const sdpa_params& params, const m
     jit.Merge(unit_parameters("KEY"));
     jit.Merge(unit_parameters("VAL"));
     jit.Merge(unit_parameters("DST"));
+
+    if (prim_params.inputs.size() > 3) {
+        jit.Merge(convert_strides("MSK", "INPUT3", {0, 1, 2, 3}));
+        jit.Merge(convert_sizes("MSK", "INPUT3", {0, 1, 2, 3}));
+        jit.Merge(unit_parameters("MSK"));
+    }
 
     return jit;
 }
