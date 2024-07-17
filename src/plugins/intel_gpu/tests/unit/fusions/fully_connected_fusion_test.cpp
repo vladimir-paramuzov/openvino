@@ -614,7 +614,6 @@ TEST_P(fc_fp16_eltwise_prod_unfused_dynamic, basic) {
     );
 
     bool is_dynamic = true;
-    cfg_not_fused.set_property(ov::intel_gpu::allow_new_shape_infer(is_dynamic));
     tolerance = 1e-2f;
     execute(p, false, is_dynamic);
 }

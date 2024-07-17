@@ -4673,7 +4673,6 @@ TEST(convolution_int8_fw_gpu, quantized_convolution_u8s8f32_asymmetric_activatio
         reorder("out", input_info("conv"), format::bfyx, data_types::f32));
 
     ExecutionConfig config = get_test_default_config(engine);
-    config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     ov::intel_gpu::ImplementationDesc conv_impl;
     if (engine.get_device_info().supports_immad) {
         conv_impl = { format::b_fs_yx_fsv16, "", impl_types::onednn };
@@ -10823,7 +10822,6 @@ TEST_P(conv_dyn_test, convolution_gpu_fsv16_depthwise_quantized) {
     ExecutionConfig config = get_test_default_config(engine);
     ov::intel_gpu::ImplementationDesc conv_impl = { format::b_fs_yx_fsv16, "convolution_gpu_b_fs_yx_fsv_16_32_imad_dw", impl_types::ocl };
     config.set_property(ov::intel_gpu::force_implementations(ov::intel_gpu::ImplForcingMap{ { "conv", conv_impl } }));
-    config.set_property(ov::intel_gpu::allow_new_shape_infer(true));
     config.set_property(ov::enable_profiling(true));
 
     network network(engine, topology, config);
