@@ -61,63 +61,6 @@ static size_t get_post_ops_count(const program_node& node) {
     return onednn_post_ops_count;
 }
 
-bool layout_optimizer::onednn_check_data_types_for_pooling(data_types in_dt, data_types out_dt) {
-    if (!data_type_traits::is_floating_point(in_dt) && in_dt != out_dt)
-            return false;
-    if ((in_dt == data_types::i8 || in_dt == data_types::u8) && out_dt != data_types::f32)
-        return true;
-    if (in_dt == data_types::f16 || out_dt == data_types::f16)
-        return true;
-    if (out_dt == data_types::f32)
-        return true;
-    if (in_dt == data_types::i32 || out_dt == data_types::i32)
-        return true;
-    if ((in_dt == data_types::i8 || out_dt == data_types::i8) || (in_dt == data_types::u8 || out_dt == data_types::u8))
-        return true;
-    return false;
-}
-
-bool layout_optimizer::onednn_check_data_types_for_convolution(data_types in_dt, data_types wei_dt, data_types out_dt) {
-    if ((in_dt == data_types::f16 && wei_dt == data_types::f16) &&
-        (out_dt == data_types::f16 || out_dt == data_types::f32 || out_dt == data_types::i8 || out_dt == data_types::u8))
-        return true;
-    if ((in_dt == data_types::i8 || in_dt == data_types::u8) && wei_dt == data_types::i8 &&
-        (out_dt == data_types::f32 || out_dt == data_types::i32 || out_dt == data_types::f16 || out_dt == data_types::i8 || out_dt == data_types::u8))
-        return true;
-    if ((in_dt == data_types::f32 && wei_dt == data_types::f32) &&
-        (out_dt == data_types::i8 || out_dt == data_types::u8))
-        return true;
-    return false;
-}
-
-// almost same with onednn_check_data_types_for_convolution.
-// removed case
-// - in_dt(f16) wei_dt(f16) out_dt(f32)
-bool layout_optimizer::onednn_check_data_types_for_deconvolution(data_types in_dt, data_types wei_dt, data_types out_dt) {
-    if ((in_dt == data_types::f16 && wei_dt == data_types::f16) &&
-        (out_dt == data_types::f16 || out_dt == data_types::i8 || out_dt == data_types::u8))
-        return true;
-    if ((in_dt == data_types::i8 || in_dt == data_types::u8) && wei_dt == data_types::i8 &&
-        (out_dt == data_types::f32 || out_dt == data_types::i32 || out_dt == data_types::f16 || out_dt == data_types::i8 || out_dt == data_types::u8))
-        return true;
-    if ((in_dt == data_types::f32 && wei_dt == data_types::f32) &&
-        (out_dt == data_types::i8 || out_dt == data_types::u8))
-        return true;
-    return false;
-}
-
-bool layout_optimizer::onednn_check_data_types_for_fc_gemm(data_types in_dt, data_types wei_dt, data_types out_dt) {
-    if ((in_dt == data_types::f16 && wei_dt == data_types::f16) &&
-        (out_dt == data_types::f16 || out_dt == data_types::f32 || out_dt == data_types::i8))
-        return true;
-    if (in_dt == data_types::f32 && wei_dt == data_types::f32)
-        return true;
-    if ((in_dt == data_types::i8 || in_dt == data_types::u8) && (wei_dt == data_types::i8) &&
-        (out_dt == data_types::i8 || out_dt == data_types::u8 || out_dt == data_types::i32 || out_dt == data_types::f16 || out_dt == data_types::f32))
-        return true;
-    return false;
-}
-
 std::pair<std::shared_ptr<reorder>, bool> reorder_factory::get_reorder(primitive_id src_id,
                                                                        int32_t src_port,
                                                                        const layout& in_layout,
@@ -1233,18 +1176,6 @@ bool layout_optimizer::is_primitive_implemented_for_onednn(program_node& node) {
         node.is_type<convolution>() || node.is_type<deconvolution>() ||
         node.is_type<reduce>() || node.is_type<reorder>() || node.is_type<concatenation>()) {
         return true;
-    }
-
-    return false;
-}
-
-bool layout_optimizer::onednn_check_preferred_impl_type_of_users(program_node& node) {
-    if (node.get_users().size() == 0)
-        return false;
-
-    for (auto& user : node.get_users()) {
-        if (user->get_preferred_impl_type() == impl_types::onednn)
-            return true;
     }
 
     return false;

@@ -112,23 +112,6 @@ public:
 #endif
     }
 
-    static bool validate(const concatenation_node& node) {
-        if (one_of(node.get_output_layout().data_type, {data_types::i32, data_types::f32}))
-            return false;
-
-        for (auto& dep : node.get_dependencies()) {
-            if (dep.first->is_in_data_flow() && dep.first->get_preferred_impl_type() == impl_types::onednn) {
-                return false;
-            }
-        }
-
-        if (format::is_blocked(node.get_output_layout().format)) {
-            return false;
-        }
-
-        return true;
-    }
-
     static std::unique_ptr<primitive_impl> create(const concatenation_node& arg, const kernel_impl_params& impl_params) {
         auto& engine = impl_params.prog->get_engine();
         auto& config = impl_params.prog->get_config();
@@ -150,7 +133,20 @@ struct concatenation_factory : public cldnn::implementation_factory<concatenatio
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<concatenation>());
-        return onednn::concatenation_onednn::validate(static_cast<const concatenation_node&>(node));
+        if (one_of(node.get_output_layout().data_type, {data_types::i32, data_types::f32}))
+            return false;
+
+        for (auto& dep : node.get_dependencies()) {
+            if (dep.first->is_in_data_flow() && dep.first->get_preferred_impl_type() == impl_types::onednn) {
+                return false;
+            }
+        }
+
+        if (format::is_blocked(node.get_output_layout().format)) {
+            return false;
+        }
+
+        return true;
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {

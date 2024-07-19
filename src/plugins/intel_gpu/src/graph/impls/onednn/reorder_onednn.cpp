@@ -108,7 +108,53 @@ public:
 #endif
     }
 
-    static bool validate(const reorder_node& node) {
+    static std::unique_ptr<primitive_impl> create(const reorder_node& arg, const kernel_impl_params& impl_params) {
+        bool is_reorder_weights = format::is_weights_format(impl_params.get_input_layout().format) ||
+                                  format::is_weights_format(impl_params.get_output_layout().format);
+        if (is_reorder_weights) {
+            return create_reorder_weights(impl_params);
+        } else {
+            auto& engine = impl_params.prog->get_engine();
+            auto& config = impl_params.prog->get_config();
+            auto attr = impl_params.attrs_onednn;
+            auto prim_desc = get_reorder_primitive_descriptor(impl_params, *attr);
+            return cldnn::make_unique<reorder_onednn>(engine, config, attr, *prim_desc);
+        }
+    }
+
+    static std::unique_ptr<primitive_impl> create_reorder_weights(const kernel_impl_params& impl_param) {
+        auto& engine = impl_param.prog->get_engine();
+        const auto& prim = impl_param.typed_desc<reorder>();
+        const auto& weights_params = prim->weights_reorder_params;
+
+        auto onednn_weights_params = std::dynamic_pointer_cast<WeightsReorderParamsOneDNN>(weights_params);
+
+        OPENVINO_ASSERT(impl_param.get_input_layout().bytes_count() == weights_params->get_input_layout().bytes_count(),
+                        "[GPU] Input layout doesn't match required reorder weights layout");
+
+        auto input_md = onednn_weights_params ? onednn_weights_params->_in_desc : onednn::layout_to_memory_desc(weights_params->get_input_layout());
+        auto output_md = onednn_weights_params ? onednn_weights_params->_out_desc : onednn::layout_to_memory_desc(weights_params->get_output_layout());
+
+        auto attr = std::make_shared<dnnl::primitive_attr>();
+        auto reorder_prim = std::make_shared<dnnl::reorder::primitive_desc>(
+            engine.get_onednn_engine(),
+            input_md,
+            engine.get_onednn_engine(),
+            output_md,
+            *attr);
+
+        return cldnn::make_unique<reorder_onednn>(engine, impl_param.prog->get_config(), attr, *reorder_prim);
+    }
+};
+
+struct reorder_factory : public cldnn::implementation_factory<reorder> {
+    std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
+        OPENVINO_ASSERT(node.is_type<reorder>());
+        return onednn::reorder_onednn::create(static_cast<const reorder_node&>(node), params);
+    }
+
+    bool validate(const program_node& node) const override {
+        OPENVINO_ASSERT(node.is_type<reorder>());
         std::vector<format> onednn_optimized_fmt = {
             format::bfyx,
             format::byxf,
@@ -175,61 +221,10 @@ public:
         return true;
     }
 
-    static std::unique_ptr<primitive_impl> create(const reorder_node& arg, const kernel_impl_params& impl_params) {
-        bool is_reorder_weights = format::is_weights_format(impl_params.get_input_layout().format) ||
-                                  format::is_weights_format(impl_params.get_output_layout().format);
-        if (is_reorder_weights) {
-            return create_reorder_weights(impl_params);
-        } else {
-            auto& engine = impl_params.prog->get_engine();
-            auto& config = impl_params.prog->get_config();
-            auto attr = impl_params.attrs_onednn;
-            auto prim_desc = get_reorder_primitive_descriptor(impl_params, *attr);
-            return cldnn::make_unique<reorder_onednn>(engine, config, attr, *prim_desc);
-        }
-    }
-
-    static std::unique_ptr<primitive_impl> create_reorder_weights(const kernel_impl_params& impl_param) {
-        auto& engine = impl_param.prog->get_engine();
-        const auto& prim = impl_param.typed_desc<reorder>();
-        const auto& weights_params = prim->weights_reorder_params;
-
-        auto onednn_weights_params = std::dynamic_pointer_cast<WeightsReorderParamsOneDNN>(weights_params);
-
-        OPENVINO_ASSERT(impl_param.get_input_layout().bytes_count() == weights_params->get_input_layout().bytes_count(),
-                        "[GPU] Input layout doesn't match required reorder weights layout");
-
-        auto input_md = onednn_weights_params ? onednn_weights_params->_in_desc : onednn::layout_to_memory_desc(weights_params->get_input_layout());
-        auto output_md = onednn_weights_params ? onednn_weights_params->_out_desc : onednn::layout_to_memory_desc(weights_params->get_output_layout());
-
-        auto attr = std::make_shared<dnnl::primitive_attr>();
-        auto reorder_prim = std::make_shared<dnnl::reorder::primitive_desc>(
-            engine.get_onednn_engine(),
-            input_md,
-            engine.get_onednn_engine(),
-            output_md,
-            *attr);
-
-        return cldnn::make_unique<reorder_onednn>(engine, impl_param.prog->get_config(), attr, *reorder_prim);
-    }
-};
-
-struct reorder_factory : public cldnn::implementation_factory<reorder> {
-    std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
-        OPENVINO_ASSERT(node.is_type<reorder>());
-        return onednn::reorder_onednn::create(static_cast<const reorder_node&>(node), params);
-    }
-
-    bool validate(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<reorder>());
-        return onednn::reorder_onednn::validate(static_cast<const reorder_node&>(node));
-    }
-
     in_out_fmts_t query_formats(const program_node& node) const override {
         OPENVINO_NOT_IMPLEMENTED;
     }
 };
-
 
 namespace detail {
 

@@ -174,12 +174,30 @@ public:
 #endif
     }
 
-    static bool validate(const reduce_node& node) {
-        auto preferred_format = node.get_preferred_input_fmt(0);
+    static std::unique_ptr<primitive_impl> create(const reduce_node& arg, const kernel_impl_params& impl_params) {
+        auto& engine = impl_params.prog->get_engine();
+        auto& config = impl_params.prog->get_config();
+        auto attr = impl_params.attrs_onednn;
+        auto prim_desc = get_reduction_primitive_descriptor(impl_params, *attr);
 
-        auto reduce_prim = node.get_primitive();
-        const auto& input_layout = node.get_input_layout(0);
-        const auto& output_layout = node.get_output_layout(0);
+        return cldnn::make_unique<reduction_onednn>(engine, config, attr, *prim_desc);
+    }
+};
+
+struct reduce_factory : public cldnn::implementation_factory<reduce> {
+    std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
+        OPENVINO_ASSERT(node.is_type<reduce>());
+        return onednn::reduction_onednn::create(static_cast<const reduce_node&>(node), params);
+    }
+
+    bool validate(const program_node& node) const override {
+        OPENVINO_ASSERT(node.is_type<reduce>());
+        const auto& reduce_node = node.as<reduce>();
+        auto preferred_format = reduce_node.get_preferred_input_fmt(0);
+
+        auto reduce_prim = reduce_node.get_primitive();
+        const auto& input_layout = reduce_node.get_input_layout(0);
+        const auto& output_layout = reduce_node.get_output_layout(0);
         auto in_dt = input_layout.data_type;
         auto out_dt = output_layout.data_type;
 
@@ -219,27 +237,6 @@ public:
             return false;
 
         return true;
-    }
-
-    static std::unique_ptr<primitive_impl> create(const reduce_node& arg, const kernel_impl_params& impl_params) {
-        auto& engine = impl_params.prog->get_engine();
-        auto& config = impl_params.prog->get_config();
-        auto attr = impl_params.attrs_onednn;
-        auto prim_desc = get_reduction_primitive_descriptor(impl_params, *attr);
-
-        return cldnn::make_unique<reduction_onednn>(engine, config, attr, *prim_desc);
-    }
-};
-
-struct reduce_factory : public cldnn::implementation_factory<reduce> {
-    std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
-        OPENVINO_ASSERT(node.is_type<reduce>());
-        return onednn::reduction_onednn::create(static_cast<const reduce_node&>(node), params);
-    }
-
-    bool validate(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<reduce>());
-        return onednn::reduction_onednn::validate(static_cast<const reduce_node&>(node));
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {

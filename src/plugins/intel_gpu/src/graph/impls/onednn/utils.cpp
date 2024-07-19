@@ -7,8 +7,6 @@
 #include <numeric>
 #include <oneapi/dnnl/dnnl_ocl.hpp>
 
-#include "to_string_utils.h"
-
 namespace cldnn {
 namespace onednn {
 

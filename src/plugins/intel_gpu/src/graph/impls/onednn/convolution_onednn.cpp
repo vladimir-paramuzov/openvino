@@ -334,33 +334,6 @@ public:
 #endif
     }
 
-
-    static bool validate(const convolution_node& node) {
-        if (!is_supported_format(node.get_preferred_input_fmt(0)))
-            return false;
-
-        auto in_dt = node.get_input_layout(0).data_type;
-        auto wei_dt = node.weights().get_output_layout().data_type;
-        auto out_dt = node.get_output_layout(false).data_type;
-
-        bool f16_conv = everyone_is(data_types::f16, in_dt, wei_dt) && one_of(out_dt, {data_types::f16, data_types::f32, data_types::u8, data_types::i8});
-        bool u8s8_conv = one_of(in_dt, {data_types::i8, data_types::u8}) &&
-                         wei_dt == data_types::i8 &&
-                         one_of(out_dt, {data_types::i32, data_types::f16, data_types::f32, data_types::u8, data_types::i8});
-
-        if (!f16_conv && !u8s8_conv)
-            return false;
-
-        if (!is_supported_post_ops(node))
-            return false;
-
-        // oneDNN doesn't support asymmetric weights quantization
-        if (node.weights_zero_points_term())
-            return false;
-
-        return true;
-    }
-
     static std::unique_ptr<primitive_impl> create(const convolution_node& arg, const kernel_impl_params& impl_params) {
         auto& engine = impl_params.prog->get_engine();
         auto& config = impl_params.prog->get_config();
@@ -384,7 +357,30 @@ struct convolution_factory : public cldnn::implementation_factory<convolution> {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<convolution>());
-        return convolution_onednn::validate(static_cast<const convolution_node&>(node));
+        const auto& conv_node = node.as<convolution>();
+        if (!is_supported_format(node.get_preferred_input_fmt(0)))
+            return false;
+
+        auto in_dt = conv_node.get_input_layout(0).data_type;
+        auto wei_dt = conv_node.weights().get_output_layout().data_type;
+        auto out_dt = conv_node.get_output_layout(false).data_type;
+
+        bool f16_conv = everyone_is(data_types::f16, in_dt, wei_dt) && one_of(out_dt, {data_types::f16, data_types::f32, data_types::u8, data_types::i8});
+        bool u8s8_conv = one_of(in_dt, {data_types::i8, data_types::u8}) &&
+                         wei_dt == data_types::i8 &&
+                         one_of(out_dt, {data_types::i32, data_types::f16, data_types::f32, data_types::u8, data_types::i8});
+
+        if (!f16_conv && !u8s8_conv)
+            return false;
+
+        if (!is_supported_post_ops(conv_node))
+            return false;
+
+        // oneDNN doesn't support asymmetric weights quantization
+        if (conv_node.weights_zero_points_term())
+            return false;
+
+        return true;
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {
@@ -454,9 +450,6 @@ struct convolution_factory : public cldnn::implementation_factory<convolution> {
             if (out_fmts[0] == format::any) {
                 out_fmts[0] = dst_fmt;
             }
-
-            GPU_DEBUG_LOG << "select_preferred_formats:" << node.id() << ": " << fmt_to_str(src_fmt) << " --> " << fmt_to_str(dst_fmt)
-                          << " For index : " << idx << std::endl;
         }
         return {in_fmts, out_fmts};
     }

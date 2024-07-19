@@ -148,25 +148,6 @@ public:
 #endif
     }
 
-    static bool validate(const pooling_node& node) {
-        if (!is_supported_format(node.get_preferred_input_fmt(0)))
-            return false;
-
-        auto in_dt = node.get_input_layout(0).data_type;
-        auto out_dt = node.get_output_layout(false).data_type;
-
-        bool fp_case = data_type_traits::is_floating_point(in_dt) && in_dt == out_dt;
-        bool u8s8_case = one_of(in_dt, {data_types::i8, data_types::u8}) && one_of(out_dt, {data_types::i8, data_types::u8});
-
-        if (!fp_case && !u8s8_case)
-            return false;
-
-        if (!is_supported_post_ops(node))
-            return false;
-
-        return true;
-    }
-
     static std::unique_ptr<primitive_impl> create(const pooling_node& arg, const kernel_impl_params& impl_params) {
         auto& engine = impl_params.prog->get_engine();
         auto& config = impl_params.prog->get_config();
@@ -185,7 +166,22 @@ struct pooling_factory : public cldnn::implementation_factory<pooling> {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<pooling>());
-        return onednn::pooling_onednn::validate(static_cast<const pooling_node&>(node));
+        if (!is_supported_format(node.get_preferred_input_fmt(0)))
+            return false;
+
+        auto in_dt = node.get_input_layout(0).data_type;
+        auto out_dt = node.get_output_layout(false).data_type;
+
+        bool fp_case = data_type_traits::is_floating_point(in_dt) && in_dt == out_dt;
+        bool u8s8_case = one_of(in_dt, {data_types::i8, data_types::u8}) && one_of(out_dt, {data_types::i8, data_types::u8});
+
+        if (!fp_case && !u8s8_case)
+            return false;
+
+        if (!is_supported_post_ops(node))
+            return false;
+
+        return true;
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {

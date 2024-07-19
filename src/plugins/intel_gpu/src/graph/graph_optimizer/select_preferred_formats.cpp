@@ -163,7 +163,6 @@ void select_preferred_formats::run(program& p) {
                 }) != forcing_map.end())
             continue;
 
-
         // Onednn primitive descriptor creation may fail, for example, due to asymmetric weight.
         try {
             n->select_preferred_formats(impl_types::onednn);
