@@ -1311,6 +1311,8 @@ impl_types layout_optimizer::get_preferred_impl_type(program_node& node, format 
                 }
             }
         }
+    } else if (node.is_type<prior_box>()) {
+        preferred_impl = impl_types::ocl;
     } else if (is_primitive_implemented_for_onednn(node)) {
         if (available.count(impl_types::onednn) > 0)
             return impl_types::onednn;
