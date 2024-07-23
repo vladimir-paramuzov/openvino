@@ -115,7 +115,6 @@ void handle_reshape::run(program& p) {
                 for (const auto& reorder_node : reorder_users) {
                     bool onednn_support = true;
                     for (const auto& user : onednn_users) {
-
                         auto idx = user->get_dependency_index(*node);
                         user->replace_dependency(idx, *reorder_node, false);
                         onednn_support = user->can_use(impl_types::onednn);

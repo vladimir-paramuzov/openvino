@@ -278,7 +278,6 @@ struct deconvolution_factory : public cldnn::implementation_factory<deconvolutio
                 src_fmt = onednn::find_data_format(prim_desc->dst_desc());
 
             in_fmts[idx] = src_fmt;
-
         }
 
         out_fmts[0] = onednn::find_data_format(prim_desc->dst_desc());
