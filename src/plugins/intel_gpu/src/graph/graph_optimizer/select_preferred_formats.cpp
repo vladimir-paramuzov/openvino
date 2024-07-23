@@ -9,18 +9,16 @@
 #include "program_node.h"
 #include "intel_gpu/runtime/engine.hpp"
 #include "intel_gpu/runtime/itt.hpp"
+#include "intel_gpu/runtime/debug_configuration.hpp"
 #include "to_string_utils.h"
 #include <iostream>
 #include <sstream>
 
-#ifdef ENABLE_ONEDNN_FOR_GPU
-#include <oneapi/dnnl/dnnl.hpp>
-#include "intel_gpu/runtime/debug_configuration.hpp"
-#endif
 
 using namespace cldnn;
 
 namespace {
+
 void print_selected_formats(const program_node& n) {
     std::stringstream ss;
     ov::write_all_to_stream(ss, "select_preferred_formats:", n.id(), ":\n");
@@ -138,8 +136,6 @@ void select_preferred_formats::run(program& p) {
     if (!device_info.supports_immad)
         return;
 
-#ifdef ENABLE_ONEDNN_FOR_GPU
-
     // Fallback to ocl when asymmetric weights convolution is existed.
     if (_lo.get_optimization_attributes().use_onednn_impls) {
         for (auto n : p.get_processing_order()) {
@@ -178,7 +174,4 @@ void select_preferred_formats::run(program& p) {
             GPU_DEBUG_INFO << "WARNING(select_preferred_formats): " << exception.what() << std::endl;
         }
     }
-#else
-    (void)_lo;
-#endif  // ENABLE_ONEDNN_FOR_GPU
 }
