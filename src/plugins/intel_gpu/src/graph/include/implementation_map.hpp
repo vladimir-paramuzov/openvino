@@ -102,9 +102,9 @@ public:
                 return factory.get();
             }
         }
-        OPENVINO_ASSERT(false, "[GPU] implementation_map for ", typeid(primitive_kind).name(),
-                               " could not find any implementation to match key: ", std::get<0>(key), "|", std::get<1>(key),
-                               ", impl_type: ", preferred_impl_type, ", shape_type: ", target_shape_type, ", node_id: ",  impl_params.desc->id);
+        OPENVINO_THROW("[GPU] implementation_map for ", impl_params.desc->type_string(),
+                       " could not find any implementation to match key: ", std::get<0>(key), "|", format(std::get<1>(key)).to_string(),
+                       ", impl_type: ", preferred_impl_type, ", shape_type: ", target_shape_type, ", node_id: ",  impl_params.desc->id);
     }
 
     // check if for a given engine and type there exist an implementation

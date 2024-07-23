@@ -19,6 +19,7 @@ using namespace cldnn;
 
 namespace {
 
+#ifdef ENABLE_ONEDNN_FOR_GPU
 void print_selected_formats(const program_node& n) {
     std::stringstream ss;
     ov::write_all_to_stream(ss, "select_preferred_formats:", n.id(), ":\n");
@@ -125,6 +126,7 @@ static void optimize_conv_permute(program_node& node) {
         }
     }
 }
+#endif  // ENABLE_ONEDNN_FOR_GPU
 } // namespace
 
 void select_preferred_formats::run(program& p) {
@@ -136,6 +138,7 @@ void select_preferred_formats::run(program& p) {
     if (!device_info.supports_immad)
         return;
 
+#ifdef ENABLE_ONEDNN_FOR_GPU
     // Fallback to ocl when asymmetric weights convolution is existed.
     if (_lo.get_optimization_attributes().use_onednn_impls) {
         for (auto n : p.get_processing_order()) {
@@ -174,4 +177,7 @@ void select_preferred_formats::run(program& p) {
             GPU_DEBUG_INFO << "WARNING(select_preferred_formats): " << exception.what() << std::endl;
         }
     }
+#else
+    (void)_lo;
+#endif  // ENABLE_ONEDNN_FOR_GPU
 }

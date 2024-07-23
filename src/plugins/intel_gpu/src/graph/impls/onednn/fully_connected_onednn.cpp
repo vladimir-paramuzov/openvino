@@ -434,19 +434,16 @@ struct fully_connected_factory : public cldnn::implementation_factory<fully_conn
         std::vector<format::type> in_fmts(node.get_dependencies().size(), format::any);
         std::vector<format::type> out_fmts(node.get_outputs_count(), format::any);
 
+        size_t out_rank = node.get_output_layout().get_rank();
         for (size_t idx = 0 ; idx < node.get_dependencies().size() ; idx++) {
             if (node.get_dependency(idx).is_constant())
                 continue;
 
-            size_t out_rank = node.get_output_layout().get_rank();
             auto target_format = format::get_default_format(out_rank);
 
             in_fmts[idx] = target_format;
-
-            if (out_fmts[0] == format::any) {
-                out_fmts[0] = target_format;
-            }
         }
+        out_fmts[0] = format::get_default_format(out_rank);
 
         return {in_fmts, out_fmts};
     }
