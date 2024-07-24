@@ -212,7 +212,7 @@ public:
     }
 };
 
-struct deconvolution_factory : public cldnn::implementation_factory<deconvolution> {
+struct DeconvolutionImplementationManager : public ImplementationManagerBase {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<deconvolution>());
         return onednn::deconvolution_onednn::create(static_cast<const deconvolution_node&>(node), params);
@@ -221,7 +221,23 @@ struct deconvolution_factory : public cldnn::implementation_factory<deconvolutio
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<deconvolution>());
         const auto& deconv_node = node.as<deconvolution>();
-        if (!is_supported_format(node.get_preferred_input_fmt(0)))
+        static const std::vector<format::type> supported_formats = {
+            format::bfyx,
+            format::byxf,
+            format::b_fs_yx_fsv16,
+            format::b_fs_yx_fsv32,
+            format::b_fs_zyx_fsv32,
+            format::bs_fs_yx_bsv16_fsv16,
+            format::bs_fs_yx_bsv16_fsv32,
+            format::bs_fs_yx_bsv32_fsv16,
+            format::bs_fs_yx_bsv32_fsv32,
+            format::bs_fs_yx_bsv4_fsv4,
+            format::bs_fs_yx_bsv8_fsv4,
+            format::bs_fs_yx_bsv8_fsv2,
+            format::bs_fs_yx_bsv4_fsv2,
+        };
+
+        if (!one_of(node.get_preferred_input_fmt(0), supported_formats))
             return false;
 
         const auto& input_layout = deconv_node.get_input_layout(0);
@@ -284,33 +300,16 @@ struct deconvolution_factory : public cldnn::implementation_factory<deconvolutio
 
         return {in_fmts, out_fmts};
     }
+
+    bool support_shapes(const kernel_impl_params& params) const override {
+        return get_shape_type(params) == shape_types::static_shape;
+    }
 };
 
 namespace detail {
 
 attach_deconvolution_onednn::attach_deconvolution_onednn() {
-    std::vector<data_types> dt = {
-        data_types::f32,
-        data_types::f16,
-        data_types::u8,
-        data_types::i8,
-    };
-    std::vector<format::type> fmt = {
-        format::bfyx,
-        format::byxf,
-        format::b_fs_yx_fsv16,
-        format::b_fs_yx_fsv32,
-        format::b_fs_zyx_fsv32,
-        format::bs_fs_yx_bsv16_fsv16,
-        format::bs_fs_yx_bsv16_fsv32,
-        format::bs_fs_yx_bsv32_fsv16,
-        format::bs_fs_yx_bsv32_fsv32,
-        format::bs_fs_yx_bsv4_fsv4,
-        format::bs_fs_yx_bsv8_fsv4,
-        format::bs_fs_yx_bsv8_fsv2,
-        format::bs_fs_yx_bsv4_fsv2,
-    };
-    implementation_map<deconvolution>::add(impl_types::onednn, shape_types::static_shape, cldnn::make_unique<deconvolution_factory>(), dt, fmt);
+    implementation_map<deconvolution>::add(impl_types::onednn, cldnn::make_unique<DeconvolutionImplementationManager>());
 }
 
 }  // namespace detail

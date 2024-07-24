@@ -560,6 +560,8 @@ protected:
                 stream.wait();
 
                 std::vector<uint64_t> duration = dnnl::get_profiling_data(stream.get_onednn_stream(), dnnl::profiling_data_kind::time);
+                if (duration.empty())
+                    duration.push_back(0);
                 OPENVINO_ASSERT(duration.size() == 1, "[GPU] oneDNN profiling data is expected to have info only for single primitive ",
                                                       "actual number is ", duration.size());
 

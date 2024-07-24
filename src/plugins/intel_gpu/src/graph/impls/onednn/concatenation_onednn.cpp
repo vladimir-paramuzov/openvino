@@ -125,7 +125,7 @@ public:
     }
 };
 
-struct concatenation_factory : public cldnn::implementation_factory<concatenation> {
+struct ConcatenationImplementationManager : public ImplementationManagerBase {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<concatenation>());
         return onednn::concatenation_onednn::create(static_cast<const concatenation_node&>(node), params);
@@ -133,17 +133,45 @@ struct concatenation_factory : public cldnn::implementation_factory<concatenatio
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<concatenation>());
-        if (one_of(node.get_output_layout().data_type, {data_types::i32, data_types::f32}))
+        static const std::vector<ov::element::Type_t> supported_types = { ov::element::f32, ov::element::f16, ov::element::u8, ov::element::i8 };
+        static const std::vector<format::type> supported_in_fmts = {
+            format::bfyx,
+            format::byxf,
+            format::b_fs_yx_fsv16,
+            format::b_fs_yx_fsv32,
+            format::bs_fs_yx_bsv16_fsv16,
+            format::bs_fs_yx_bsv16_fsv32,
+            format::bs_fs_yx_bsv32_fsv16,
+            format::bs_fs_yx_bsv32_fsv32,
+            format::b_fs_zyx_fsv16,
+            format::b_fs_zyx_fsv32,
+            format::bs_fs_zyx_bsv16_fsv16,
+            format::bs_fs_zyx_bsv16_fsv32,
+            format::bs_fs_zyx_bsv32_fsv16,
+            format::bs_fs_zyx_bsv32_fsv32,
+            format::bs_fs_yx_bsv4_fsv4,
+            format::bs_fs_yx_bsv8_fsv4,
+        };
+
+        const auto& out_layout = node.get_output_layout();
+
+        if (!one_of(out_layout.data_type, supported_types))
+            return false;
+
+        if (format::is_blocked(out_layout.format))
             return false;
 
         for (auto& dep : node.get_dependencies()) {
+            const auto& in_layout = dep.first->get_output_layout(dep.second);
+            if (!one_of(in_layout.data_type, supported_types))
+                return false;
+
+            if (!one_of(in_layout.format.value, supported_in_fmts))
+                return false;
+
             if (dep.first->is_in_data_flow() && dep.first->get_preferred_impl_type() == impl_types::onednn) {
                 return false;
             }
-        }
-
-        if (format::is_blocked(node.get_output_layout().format)) {
-            return false;
         }
 
         return true;
@@ -152,36 +180,16 @@ struct concatenation_factory : public cldnn::implementation_factory<concatenatio
     in_out_fmts_t query_formats(const program_node& node) const override {
         OPENVINO_NOT_IMPLEMENTED;
     }
+
+    bool support_shapes(const kernel_impl_params& params) const override {
+        return get_shape_type(params) == shape_types::static_shape;
+    }
 };
 
 namespace detail {
 
 attach_concatenation_onednn::attach_concatenation_onednn() {
-    std::vector<data_types> dt = {
-        data_types::f32,
-        data_types::f16,
-        data_types::u8,
-        data_types::i8,
-    };
-    std::vector<format::type> fmt = {
-        format::bfyx,
-        format::byxf,
-        format::b_fs_yx_fsv16,
-        format::b_fs_yx_fsv32,
-        format::bs_fs_yx_bsv16_fsv16,
-        format::bs_fs_yx_bsv16_fsv32,
-        format::bs_fs_yx_bsv32_fsv16,
-        format::bs_fs_yx_bsv32_fsv32,
-        format::b_fs_zyx_fsv16,
-        format::b_fs_zyx_fsv32,
-        format::bs_fs_zyx_bsv16_fsv16,
-        format::bs_fs_zyx_bsv16_fsv32,
-        format::bs_fs_zyx_bsv32_fsv16,
-        format::bs_fs_zyx_bsv32_fsv32,
-        format::bs_fs_yx_bsv4_fsv4,
-        format::bs_fs_yx_bsv8_fsv4,
-    };
-    implementation_map<concatenation>::add(impl_types::onednn, concatenation_onednn::create, dt, fmt);
+    implementation_map<concatenation>::add(impl_types::onednn, cldnn::make_unique<ConcatenationImplementationManager>());
 }
 
 }  // namespace detail

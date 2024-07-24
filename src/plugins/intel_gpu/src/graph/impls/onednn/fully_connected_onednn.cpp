@@ -4,6 +4,7 @@
 
 #include "fully_connected_inst.h"
 #include "intel_gpu/primitives/fully_connected.hpp"
+#include "intel_gpu/runtime/utils.hpp"
 #include "primitive_onednn_base.h"
 #include "implementation_map.hpp"
 
@@ -376,7 +377,7 @@ public:
     }
 };
 
-struct fully_connected_factory : public cldnn::implementation_factory<fully_connected> {
+struct FullyConnectedImplementationManager : public ImplementationManagerBase {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<fully_connected>());
         return onednn::fully_connected_onednn::create(static_cast<const fully_connected_node&>(node), params);
@@ -385,11 +386,16 @@ struct fully_connected_factory : public cldnn::implementation_factory<fully_conn
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<fully_connected>());
         const auto& fc_node = node.as<fully_connected>();
-        auto in0_dt = fc_node.get_input_layout(0).data_type;
+        const auto& in_layout = fc_node.get_input_layout(0);
+        const auto& out_layout = fc_node.get_output_layout(0);
+        auto in0_dt = in_layout.data_type;
         auto wei_dt = fc_node.weights().get_output_layout().data_type;
-        auto out_dt = fc_node.get_output_layout(0).data_type;
+        auto out_dt = out_layout.data_type;
 
         if (one_of(data_types::i64, {in0_dt, wei_dt}))
+            return false;
+
+        if (!everyone_is(format::bfyx, in_layout.format, out_layout.format))
             return false;
 
         bool f16f16_case = everyone_is(data_types::f16, in0_dt, wei_dt) && one_of(out_dt, {data_types::f16, data_types::f32, data_types::i8});
@@ -447,21 +453,16 @@ struct fully_connected_factory : public cldnn::implementation_factory<fully_conn
 
         return {in_fmts, out_fmts};
     }
+
+    bool support_shapes(const kernel_impl_params& params) const override {
+        return get_shape_type(params) == shape_types::static_shape;
+    }
 };
 
 namespace detail {
 
 attach_fully_connected_onednn::attach_fully_connected_onednn() {
-    std::vector<data_types> dt = {
-        data_types::f32,
-        data_types::f16,
-        data_types::u8,
-        data_types::i8,
-    };
-    std::vector<format::type> fmt = {
-        format::bfyx,
-    };
-    implementation_map<fully_connected>::add(impl_types::onednn, cldnn::make_unique<fully_connected_factory>(), dt, fmt);
+    implementation_map<fully_connected>::add(impl_types::onednn, cldnn::make_unique<FullyConnectedImplementationManager>());
 }
 
 }  // namespace detail

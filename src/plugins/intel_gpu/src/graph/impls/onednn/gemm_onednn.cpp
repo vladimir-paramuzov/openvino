@@ -436,7 +436,7 @@ public:
     }
 };
 
-struct gemm_factory : public cldnn::implementation_factory<gemm> {
+struct GemmImplementationManager : public ImplementationManagerBase {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<gemm>());
         return onednn::gemm_onednn::create(static_cast<const gemm_node&>(node), params);
@@ -445,11 +445,34 @@ struct gemm_factory : public cldnn::implementation_factory<gemm> {
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<gemm>());
         const auto& gemm_node = node.as<gemm>();
-        auto in0_dt = node.get_input_layout(0).data_type;
-        auto in1_dt = node.get_input_layout(1).data_type;
-        auto out_dt = node.get_output_layout(0).data_type;
+        const auto& in0_layout = node.get_input_layout(0);
+        const auto& in1_layout = node.get_input_layout(1);
+        const auto& out_layout = node.get_output_layout(0);
+
+        auto in0_dt = in0_layout.data_type;
+        auto in1_dt = in1_layout.data_type;
+        auto out_dt = out_layout.data_type;
+
+        static const std::vector<format::type> supported_formats = {
+            format::bfyx,
+            format::bfxy,
+            format::byxf,
+            format::byfx,
+            format::bxfy,
+            format::fybx,  //format used for gemm fusion
+            format::fyxb,  //format used for gemm fusion
+            format::xbfy, // format used for gemm fusion
+            format::ybfx, // format used for gemm fusion
+            format::bfzyx,
+            format::bfwzyx,
+        };
 
         if (one_of(in0_dt, {data_types::f32, data_types::i64}) || one_of(in1_dt, {data_types::f32, data_types::i64}))
+            return false;
+
+        if (!one_of(in0_layout.format.value, supported_formats) ||
+            !one_of(in1_layout.format.value, supported_formats) ||
+            !one_of(out_layout.format.value, supported_formats))
             return false;
 
         bool f16f16_case = everyone_is(data_types::f16, in0_dt, in1_dt) && one_of(out_dt, {data_types::f16, data_types::f32, data_types::i8});
@@ -487,31 +510,16 @@ struct gemm_factory : public cldnn::implementation_factory<gemm> {
 
         return {in_fmts, out_fmts};
     }
+
+    bool support_shapes(const kernel_impl_params& params) const override {
+        return get_shape_type(params) == shape_types::static_shape;
+    }
 };
 
 namespace detail {
 
 attach_gemm_onednn::attach_gemm_onednn() {
-    std::vector<data_types> dt = {
-        data_types::f32,
-        data_types::f16,
-        data_types::u8,
-        data_types::i8,
-    };
-    std::vector<format::type> fmt = {
-        format::bfyx,
-        format::bfxy,
-        format::byxf,
-        format::byfx,
-        format::bxfy,
-        format::fybx,  //format used for gemm fusion
-        format::fyxb,  //format used for gemm fusion
-        format::xbfy, // format used for gemm fusion
-        format::ybfx, // format used for gemm fusion
-        format::bfzyx,
-        format::bfwzyx,
-    };
-    implementation_map<gemm>::add(impl_types::onednn, gemm_onednn::create, dt, fmt);
+    implementation_map<gemm>::add(impl_types::onednn, cldnn::make_unique<GemmImplementationManager>());
 }
 
 }  // namespace detail

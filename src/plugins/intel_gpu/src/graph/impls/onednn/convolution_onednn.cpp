@@ -349,7 +349,7 @@ public:
     }
 };
 
-struct convolution_factory : public cldnn::implementation_factory<convolution> {
+struct ConvolutionImplementationManager : public ImplementationManagerBase {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<convolution>());
         return convolution_onednn::create(static_cast<const convolution_node&>(node), params);
@@ -453,54 +453,16 @@ struct convolution_factory : public cldnn::implementation_factory<convolution> {
         }
         return {in_fmts, out_fmts};
     }
+
+    bool support_shapes(const kernel_impl_params& params) const override {
+        return get_shape_type(params) == shape_types::static_shape;
+    }
 };
 
 namespace detail {
 
 attach_convolution_onednn::attach_convolution_onednn() {
-    std::vector<data_types> dt = {
-        data_types::f32,
-        data_types::f16,
-        data_types::u8,
-        data_types::i8,
-    };
-    std::vector<format::type> fmt = {
-        format::bfyx,
-        format::bfzyx,
-        format::byxf,
-        format::bzyxf,
-        format::b_fs_yx_fsv2,
-        format::b_fs_zyx_fsv2,
-        format::b_fs_yx_fsv4,
-        format::b_fs_zyx_fsv4,
-        format::b_fs_yx_fsv8,
-        format::b_fs_zyx_fsv8,
-        format::b_fs_yx_fsv16,
-        format::b_fs_zyx_fsv16,
-        format::b_fs_zyx_fsv32,
-        format::b_fs_yx_fsv32,
-        format::bs_fs_yx_bsv16_fsv16,
-        format::bs_fs_zyx_bsv16_fsv16,
-        format::bs_fs_yx_bsv16_fsv32,
-        format::bs_fs_zyx_bsv16_fsv32,
-        format::bs_fs_yx_bsv32_fsv16,
-        format::bs_fs_zyx_bsv32_fsv16,
-        format::bs_fs_yx_bsv32_fsv32,
-        format::bs_fs_zyx_bsv32_fsv32,
-        format::bs_fs_yx_bsv4_fsv4,
-        format::bs_fs_yx_bsv8_fsv4,
-        format::bs_fs_yx_bsv16_fsv8,
-        format::bs_fs_yx_bsv16_fsv4,
-        format::bs_fs_yx_bsv16_fsv2,
-        format::bs_fs_zyx_bsv8_fsv4,
-        format::bs_fs_zyx_bsv16_fsv8,
-        format::bs_fs_zyx_bsv16_fsv4,
-        format::bs_fs_zyx_bsv16_fsv2,
-        format::bs_fs_yx_bsv8_fsv2,
-        format::bs_fs_zyx_bsv8_fsv2,
-        format::bs_fs_yx_bsv4_fsv2,
-    };
-    implementation_map<convolution>::add(impl_types::onednn, cldnn::make_unique<convolution_factory>(), dt, fmt);
+    implementation_map<convolution>::add(impl_types::onednn, cldnn::make_unique<ConvolutionImplementationManager>());
 }
 
 }  // namespace detail

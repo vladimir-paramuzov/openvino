@@ -147,7 +147,7 @@ public:
     }
 };
 
-struct reorder_factory : public cldnn::implementation_factory<reorder> {
+struct ReorderImplementationManager : public ImplementationManagerBase {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<reorder>());
         return onednn::reorder_onednn::create(static_cast<const reorder_node&>(node), params);
@@ -155,7 +155,7 @@ struct reorder_factory : public cldnn::implementation_factory<reorder> {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<reorder>());
-        std::vector<format> onednn_optimized_fmt = {
+        static const std::vector<format::type> supported_formats = {
             format::bfyx,
             format::byxf,
             format::b_fs_zyx_fsv16,
@@ -190,10 +190,8 @@ struct reorder_factory : public cldnn::implementation_factory<reorder> {
         if (output_fmt == format::custom)
             return true;
 
-        if (std::find(onednn_optimized_fmt.begin(), onednn_optimized_fmt.end(), input_fmt) == onednn_optimized_fmt.end() ||
-            std::find(onednn_optimized_fmt.begin(), onednn_optimized_fmt.end(), output_fmt) == onednn_optimized_fmt.end()) {
+        if (!one_of(input_fmt.value, supported_formats) || !one_of(output_fmt.value, supported_formats))
             return false;
-        }
 
         // onednn doesn't support paddings
         if (input_layout.data_padding || output_layout.data_padding)
@@ -224,12 +222,16 @@ struct reorder_factory : public cldnn::implementation_factory<reorder> {
     in_out_fmts_t query_formats(const program_node& node) const override {
         OPENVINO_NOT_IMPLEMENTED;
     }
+
+    bool support_shapes(const kernel_impl_params& params) const override {
+        return get_shape_type(params) == shape_types::static_shape;
+    }
 };
 
 namespace detail {
 
 attach_reorder_onednn::attach_reorder_onednn() {
-    implementation_map<reorder>::add(impl_types::onednn, cldnn::make_unique<reorder_factory>(), {});
+    implementation_map<reorder>::add(impl_types::onednn, cldnn::make_unique<ReorderImplementationManager>());
     WeightsReordersFactory::add(cldnn::impl_types::onednn, shape_types::static_shape, reorder_onednn::create_reorder_weights);
 }
 

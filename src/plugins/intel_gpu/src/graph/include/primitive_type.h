@@ -27,25 +27,18 @@ struct primitive_type {
                                                       const std::shared_ptr<primitive> prim) const = 0;
     virtual std::shared_ptr<primitive_inst> create_instance(network& network,
                                                             const program_node& node) const = 0;
-    virtual std::shared_ptr<primitive_inst> create_instance(network& network) const = 0;
 
     virtual std::unique_ptr<primitive_impl> choose_impl(const program_node& node) const = 0;
     virtual std::unique_ptr<primitive_impl> choose_impl(const program_node& node, const kernel_impl_params& params) const = 0;
 
     virtual std::set<impl_types> get_available_impls(const program_node& node) const = 0;
+    virtual bool is_node_supported(const cldnn::program_node& node) const = 0;
+    virtual bool is_node_supported(const cldnn::program_node& node, shape_types shape_type) const = 0;
     virtual bool is_node_supported(const cldnn::program_node& node, impl_types impl_type) const = 0;
+    virtual bool is_node_supported(const cldnn::program_node& node, impl_types impl_type, shape_types shape_type) const = 0;
 
     using in_out_fmts_t = std::pair<std::vector<format::type>, std::vector<format::type>>;
     virtual in_out_fmts_t query_preferred_formats(const cldnn::program_node& node, impl_types impl_type) const = 0;
-
-    virtual bool does_an_implementation_exist(const program_node& node) const = 0;
-    virtual bool does_an_implementation_exist(const program_node& node, const kernel_impl_params& params) const = 0;
-
-    virtual bool does_possible_implementation_exist(const program_node& node) const = 0;
-    virtual bool does_possible_implementation_exist(const program_node& node, const kernel_impl_params& params) const = 0;
-
-    virtual bool does_dynamic_implementation_exist(const program_node& node) const = 0;
-    virtual bool does_dynamic_implementation_exist(const program_node& node, const kernel_impl_params& params) const = 0;
 
     virtual layout calc_output_layout(const program_node& node, const kernel_impl_params& params) const = 0;
     virtual std::vector<layout> calc_output_layouts(const program_node& node, const kernel_impl_params& impl_param) const = 0;

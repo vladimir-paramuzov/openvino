@@ -184,7 +184,7 @@ public:
     }
 };
 
-struct reduce_factory : public cldnn::implementation_factory<reduce> {
+struct ReduceImplementationManager : public ImplementationManagerBase {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<reduce>());
         return onednn::reduction_onednn::create(static_cast<const reduce_node&>(node), params);
@@ -196,12 +196,32 @@ struct reduce_factory : public cldnn::implementation_factory<reduce> {
         auto preferred_format = reduce_node.get_preferred_input_fmt(0);
 
         auto reduce_prim = reduce_node.get_primitive();
-        const auto& input_layout = reduce_node.get_input_layout(0);
-        const auto& output_layout = reduce_node.get_output_layout(0);
-        auto in_dt = input_layout.data_type;
-        auto out_dt = output_layout.data_type;
+        const auto& in_layout = reduce_node.get_input_layout(0);
+        const auto& out_layout = reduce_node.get_output_layout(0);
+        auto in_dt = in_layout.data_type;
+        auto out_dt = out_layout.data_type;
 
         if (in_dt == data_types::f32 && out_dt == data_types::f32)
+            return false;
+
+        static const std::vector<format::type> supported_formats = {
+            format::bfyx,
+            format::bfzyx,
+            format::bfwzyx,
+            format::b_fs_yx_fsv16,
+            format::b_fs_yx_fsv32,
+            format::b_fs_zyx_fsv32,
+            format::bs_fs_yx_bsv16_fsv16,
+            format::bs_fs_yx_bsv16_fsv32,
+            format::bs_fs_yx_bsv32_fsv16,
+            format::bs_fs_yx_bsv32_fsv32,
+            format::bs_fs_zyx_bsv16_fsv16,
+            format::bs_fs_zyx_bsv16_fsv32,
+            format::bs_fs_zyx_bsv32_fsv16,
+            format::bs_fs_zyx_bsv32_fsv32,
+        };
+
+        if (!one_of(in_layout.format.value, supported_formats) || !one_of(out_layout.format.value, supported_formats))
             return false;
 
         // oneDNN reduction currently does not support logical_and, logical_or, log_sum and log_sum_exp.
@@ -223,7 +243,7 @@ struct reduce_factory : public cldnn::implementation_factory<reduce> {
         }
 
         // redundant reduce is not acceptable on oneDNN reduction
-        if (output_layout == input_layout) {
+        if (out_layout == in_layout) {
             return false;
         }
 
@@ -242,35 +262,16 @@ struct reduce_factory : public cldnn::implementation_factory<reduce> {
     in_out_fmts_t query_formats(const program_node& node) const override {
         OPENVINO_NOT_IMPLEMENTED;
     }
+
+    bool support_shapes(const kernel_impl_params& params) const override {
+        return get_shape_type(params) == shape_types::static_shape;
+    }
 };
 
 namespace detail {
 
 attach_reduction_onednn::attach_reduction_onednn() {
-    std::vector<data_types> dt = {
-        data_types::f32,
-        data_types::f16,
-        data_types::u8,
-        data_types::i8,
-    };
-    std::vector<format::type> fmt = {
-        format::bfyx,
-        format::bfzyx,
-        format::bfwzyx,
-        format::b_fs_yx_fsv16,
-        format::b_fs_yx_fsv32,
-        format::b_fs_zyx_fsv32,
-        format::bs_fs_yx_bsv16_fsv16,
-        format::bs_fs_yx_bsv16_fsv32,
-        format::bs_fs_yx_bsv32_fsv16,
-        format::bs_fs_yx_bsv32_fsv32,
-        format::bs_fs_zyx_bsv16_fsv16,
-        format::bs_fs_zyx_bsv16_fsv32,
-        format::bs_fs_zyx_bsv32_fsv16,
-        format::bs_fs_zyx_bsv32_fsv32,
-    };
-
-    implementation_map<reduce>::add(impl_types::onednn, cldnn::make_unique<reduce_factory>(), dt, fmt);
+    implementation_map<reduce>::add(impl_types::onednn, cldnn::make_unique<ReduceImplementationManager>());
 }
 
 }  // namespace detail

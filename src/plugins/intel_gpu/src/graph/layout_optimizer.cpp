@@ -127,7 +127,7 @@ bool layout_optimizer::is_format_supported(program_node& node, format::type fmt)
     new_layout.format = fmt;
     node.set_output_layout(new_layout, false);
 
-    auto supported = node.type()->does_possible_implementation_exist(node);
+    auto supported = node.type()->is_node_supported(node);
 
     node.set_output_layout(prev_layout, false);
 

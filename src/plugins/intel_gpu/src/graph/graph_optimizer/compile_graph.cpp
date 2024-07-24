@@ -81,7 +81,7 @@ void compile_graph::run(program& p) {
 
         bool can_select_impl = !node->is_type<data>() &&
                                !(node->is_type<mutable_data>() && node->get_dependencies().empty()) &&
-                               (!node->is_dynamic() || (use_shape_agnostic_impl && node->type()->does_dynamic_implementation_exist(*node)));
+                               (!node->is_dynamic() || (use_shape_agnostic_impl && node->type()->is_node_supported(*node, shape_types::dynamic_shape)));
 
         // TODO: Remove this WA once we have shape agnostic reshape kernel
         if (node->is_type<reshape>() && node->is_dynamic() && !node->can_be_optimized())
@@ -119,7 +119,7 @@ void compile_graph::run(program& p) {
             can_select_impl = true;
 
         if (can_select_impl) {
-            tasks.push_back([node, &exception, change_initial_impl, original_impl_type] {
+        //     tasks.push_back([node, &exception, change_initial_impl, original_impl_type] {
                 try {
                     node->selected_impl = node->type()->choose_impl(*node);
                     if (change_initial_impl) {
@@ -130,7 +130,7 @@ void compile_graph::run(program& p) {
                 } catch(...) {
                     exception = std::current_exception();
                 }
-            });
+            // } );
         } else {
             if (change_initial_impl) {
                 node->set_preferred_impl_type(original_impl_type);
@@ -138,8 +138,8 @@ void compile_graph::run(program& p) {
         }
     }
 
-    task_executor->run_and_wait(tasks);
-    tasks.clear();
+    // task_executor->run_and_wait(tasks);
+    // tasks.clear();
 
     if (exception) {
         std::rethrow_exception(exception);
