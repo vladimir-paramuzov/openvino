@@ -158,7 +158,7 @@ public:
     }
 };
 
-struct PoolingImplementationManager : public ImplementationManagerBase {
+struct PoolingImplementationManager : public ImplementationManager {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<pooling>());
         return onednn::pooling_onednn::create(static_cast<const pooling_node&>(node), params);

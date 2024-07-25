@@ -19,6 +19,7 @@ struct primitive_impl;
 class primitive_inst;
 struct program;
 struct primitive;
+struct ImplementationManager;
 
 struct primitive_type {
     virtual ~primitive_type() = default;
@@ -31,7 +32,7 @@ struct primitive_type {
     virtual std::unique_ptr<primitive_impl> choose_impl(const program_node& node) const = 0;
     virtual std::unique_ptr<primitive_impl> choose_impl(const program_node& node, const kernel_impl_params& params) const = 0;
 
-    virtual std::set<impl_types> get_available_impls(const program_node& node) const = 0;
+    virtual std::map<impl_types, const ImplementationManager*> get_available_impls(const program_node& node) const = 0;
     virtual bool is_node_supported(const cldnn::program_node& node) const = 0;
     virtual bool is_node_supported(const cldnn::program_node& node, shape_types shape_type) const = 0;
     virtual bool is_node_supported(const cldnn::program_node& node, impl_types impl_type) const = 0;

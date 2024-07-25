@@ -1258,7 +1258,7 @@ impl_types layout_optimizer::get_preferred_impl_type(program_node& node, format 
         available.erase(impl_types::onednn);
 
     if (available.size() == 1)
-        return *available.begin();
+        return available.begin()->first;
 
     if (node.is_in_shape_of_subgraph() && !node.is_type<reshape>())
         return impl_types::cpu;

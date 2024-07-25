@@ -147,7 +147,7 @@ public:
     }
 };
 
-struct ReorderImplementationManager : public ImplementationManagerBase {
+struct ReorderImplementationManager : public ImplementationManager {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<reorder>());
         return onednn::reorder_onednn::create(static_cast<const reorder_node&>(node), params);

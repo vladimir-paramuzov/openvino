@@ -184,7 +184,7 @@ public:
     }
 };
 
-struct ReduceImplementationManager : public ImplementationManagerBase {
+struct ReduceImplementationManager : public ImplementationManager {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<reduce>());
         return onednn::reduction_onednn::create(static_cast<const reduce_node&>(node), params);

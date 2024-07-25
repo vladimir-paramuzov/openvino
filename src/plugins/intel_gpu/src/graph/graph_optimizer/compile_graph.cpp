@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include "implementation_map.hpp"
 #include "intel_gpu/runtime/engine.hpp"
 #include "intel_gpu/runtime/itt.hpp"
 
@@ -46,6 +47,7 @@ void compile_graph::run(program& p) {
         auto& node = *(std::next(proc_order.begin(), idx));
         const bool use_shape_agnostic_impl = !p.get_config().get_property(ov::intel_gpu::use_only_static_kernels_for_dynamic_shape);
         const impl_types original_impl_type = node->get_preferred_impl_type();
+
         bool change_initial_impl = node->is_dynamic() && original_impl_type == impl_types::onednn;
 
         if (change_initial_impl) {
@@ -117,6 +119,24 @@ void compile_graph::run(program& p) {
 
         if (node->is_type<condition>() || node->is_type<loop>() || node->is_type<proposal>())
             can_select_impl = true;
+
+
+        if (!node->is_type<data>() && !p.is_internal_program()) {
+            std::cerr << "-----------------------------\n";
+            auto all_impls = node->type()->get_available_impls(*node);
+            std::cerr << node->id() << " is_dynamic = " << node->is_dynamic() << " preferred initial: " << original_impl_type << std::endl;
+            std::cerr << "available:\n";
+            for (auto& impl : all_impls) {
+                std::cerr << "\t" << impl.first << " supports=" << impl.second->support_shapes(*node->get_kernel_impl_params());
+            }
+
+            std::cerr << std::endl;
+            std::cerr << "can select: " << can_select_impl << std::endl;;
+            std::cerr << "change_initial_impl: " << change_initial_impl << std::endl;;
+            std::cerr << "preferred: " << node->get_preferred_impl_type() << std::endl;;
+            std::cerr << "-----------------------------\n";
+        }
+
 
         if (can_select_impl) {
         //     tasks.push_back([node, &exception, change_initial_impl, original_impl_type] {

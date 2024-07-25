@@ -45,13 +45,13 @@ struct implementation_key {
     }
 };
 
-struct ImplementationManagerBase {
+struct ImplementationManager {
 public:
     virtual std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const = 0;
     virtual bool validate(const program_node& node) const = 0;
     virtual bool support_shapes(const kernel_impl_params& param) const = 0;
     virtual in_out_fmts_t query_formats(const program_node& node) const = 0;
-    virtual ~ImplementationManagerBase() = default;
+    virtual ~ImplementationManager() = default;
 
     static shape_types get_shape_type(const program_node& node);
     static shape_types get_shape_type(const kernel_impl_params& params);
@@ -60,7 +60,7 @@ protected:
 };
 
 template <typename primitive_kind>
-struct ImplementationManagerLegacy : public ImplementationManagerBase {
+struct ImplementationManagerLegacy : public ImplementationManager {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         if (m_factory) {
             auto res = m_factory(static_cast<const typed_program_node<primitive_kind>&>(node), params);
@@ -71,7 +71,7 @@ struct ImplementationManagerLegacy : public ImplementationManagerBase {
         OPENVINO_NOT_IMPLEMENTED;
     }
     bool validate(const program_node& node) const override {
-       return ImplementationManagerBase::is_supported(node, m_keys, m_shape_type);
+       return ImplementationManager::is_supported(node, m_keys, m_shape_type);
     }
 
     bool support_shapes(const kernel_impl_params& params) const override {
@@ -102,9 +102,9 @@ class ImplementationsRegistry {
 public:
     using simple_factory_type = std::function<std::unique_ptr<primitive_impl>(const typed_program_node<primitive_kind>&, const kernel_impl_params&)>;
     using key_type = cldnn::key_type;
-    using list_type = singleton_list<std::tuple<impl_types, shape_types, std::unique_ptr<ImplementationManagerBase>>, primitive_kind>;
+    using list_type = singleton_list<std::tuple<impl_types, shape_types, std::unique_ptr<ImplementationManager>>, primitive_kind>;
 
-    static const ImplementationManagerBase* get(impl_types preferred_impl_type, shape_types target_shape_type) {
+    static const ImplementationManager* get(impl_types preferred_impl_type, shape_types target_shape_type) {
         for (auto& entry : list_type::instance()) {
             impl_types impl_type = std::get<0>(entry);
             if ((preferred_impl_type & impl_type) != impl_type)
@@ -154,12 +154,12 @@ public:
         list_type::instance().push_back({impl_type, shape_type, std::move(f)});
     }
 
-    static void add(impl_types impl_type, shape_types shape_type, std::unique_ptr<ImplementationManagerBase> factory,
+    static void add(impl_types impl_type, shape_types shape_type, std::unique_ptr<ImplementationManager> factory,
                     const std::vector<data_types>& types, const std::vector<format::type>& formats) {
         add(impl_type, shape_type, std::move(factory), combine(types, formats));
     }
 
-    static void add(impl_types impl_type, std::unique_ptr<ImplementationManagerBase> factory) {
+    static void add(impl_types impl_type, std::unique_ptr<ImplementationManager> factory) {
         OPENVINO_ASSERT(impl_type != impl_types::any, "[GPU] Can't register impl with type any");
         // shape_type::any is used as factory::validate will check everything
         list_type::instance().push_back({impl_type, shape_types::any, std::move(factory)});

@@ -349,7 +349,7 @@ public:
     }
 };
 
-struct ConvolutionImplementationManager : public ImplementationManagerBase {
+struct ConvolutionImplementationManager : public ImplementationManager {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<convolution>());
         return convolution_onednn::create(static_cast<const convolution_node&>(node), params);

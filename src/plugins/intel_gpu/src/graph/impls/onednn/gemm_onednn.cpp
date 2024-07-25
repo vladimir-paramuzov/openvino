@@ -436,7 +436,7 @@ public:
     }
 };
 
-struct GemmImplementationManager : public ImplementationManagerBase {
+struct GemmImplementationManager : public ImplementationManager {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<gemm>());
         return onednn::gemm_onednn::create(static_cast<const gemm_node&>(node), params);

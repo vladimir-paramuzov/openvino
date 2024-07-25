@@ -39,7 +39,7 @@ struct primitive_type_base : primitive_type {
 
     in_out_fmts_t query_preferred_formats(const cldnn::program_node& node, impl_types impl_type) const  override {
         OPENVINO_ASSERT(node.type() == this, "[GPU] primitive_type_base::choose_impl: primitive type mismatch");
-        auto shape_type = ImplementationManagerBase::get_shape_type(node);
+        auto shape_type = ImplementationManager::get_shape_type(node);
         if (auto factory = implementation_map<PType>::get(node.get_preferred_impl_type(), shape_type))
             return factory->query_formats(node);
         return {};
@@ -49,7 +49,7 @@ struct primitive_type_base : primitive_type {
         try {
             OPENVINO_ASSERT(node.type() == this, "[GPU] primitive_type_base::choose_impl: primitive type mismatch");
             auto impl_type = node.get_preferred_impl_type();
-            auto shape_type = ImplementationManagerBase::get_shape_type(runtime_params);
+            auto shape_type = ImplementationManager::get_shape_type(runtime_params);
             if (auto factory = implementation_map<PType>::get(impl_type, shape_type))
                 return factory->create(node, runtime_params);
             OPENVINO_THROW("[GPU] Could not find any implementatio with",
@@ -66,15 +66,15 @@ struct primitive_type_base : primitive_type {
         }
     }
 
-    std::set<impl_types> get_available_impls(const cldnn::program_node& node) const override {
+    std::map<impl_types, const ImplementationManager*> get_available_impls(const cldnn::program_node& node) const override {
         OPENVINO_ASSERT(node.type() == this, "[GPU] primitive_type_base::get_available_impls: primitive type mismatch");
-        auto shape_type = ImplementationManagerBase::get_shape_type(node);
+        auto shape_type = ImplementationManager::get_shape_type(node);
         auto all_impls = implementation_map<PType>::get_available_impls(shape_type);
-        std::set<impl_types> supported_impls;
+        std::map<impl_types, const ImplementationManager*> supported_impls;
         for (const auto& impl : all_impls) {
             auto factory = implementation_map<PType>::get(impl, shape_type);
             if (factory->validate(node))
-                supported_impls.insert(impl);
+                supported_impls.insert({impl, factory});
         }
 
         return supported_impls;
@@ -82,12 +82,12 @@ struct primitive_type_base : primitive_type {
 
 
     bool is_node_supported(const cldnn::program_node& node) const override {
-        auto shape_type = ImplementationManagerBase::get_shape_type(node);
+        auto shape_type = ImplementationManager::get_shape_type(node);
         return is_node_supported(node, node.get_preferred_impl_type(), shape_type);
     }
 
     bool is_node_supported(const cldnn::program_node& node, impl_types impl_type) const override {
-        auto shape_type = ImplementationManagerBase::get_shape_type(node);
+        auto shape_type = ImplementationManager::get_shape_type(node);
         return is_node_supported(node, impl_type, shape_type);
     }
 

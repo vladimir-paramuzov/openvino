@@ -212,7 +212,7 @@ public:
     }
 };
 
-struct DeconvolutionImplementationManager : public ImplementationManagerBase {
+struct DeconvolutionImplementationManager : public ImplementationManager {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<deconvolution>());
         return onednn::deconvolution_onednn::create(static_cast<const deconvolution_node&>(node), params);

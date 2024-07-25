@@ -377,7 +377,7 @@ public:
     }
 };
 
-struct FullyConnectedImplementationManager : public ImplementationManagerBase {
+struct FullyConnectedImplementationManager : public ImplementationManager {
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
         OPENVINO_ASSERT(node.is_type<fully_connected>());
         return onednn::fully_connected_onednn::create(static_cast<const fully_connected_node&>(node), params);
