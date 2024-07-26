@@ -4,7 +4,7 @@
 
 #include "proposal_inst.h"
 #include "intel_gpu/runtime/engine.hpp"
-#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/implementation_map.hpp"
 #include "intel_gpu/runtime/error_handler.hpp"
 #include "register.hpp"
 

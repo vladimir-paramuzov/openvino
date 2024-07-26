@@ -7,7 +7,7 @@
 #include "intel_gpu/runtime/layout.hpp"
 #include "intel_gpu/runtime/utils.hpp"
 
-#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/implementation_manager.hpp"
 
 #include "utils.hpp"
 
@@ -17,7 +17,7 @@ namespace cldnn {
 namespace onednn {
 
 struct ConvolutionImplementationManager : public ImplementationManager {
-    ConvolutionImplementationManager() : ImplementationManager(impl_types::onednn) {}
+    ConvolutionImplementationManager() : ImplementationManager(impl_types::onednn, shape_types::static_shape) {}
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override;
 
     bool validate(const program_node& node) const override {

@@ -3,14 +3,14 @@
 //
 
 #include "concatenation_inst.h"
-#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/implementation_manager.hpp"
 
 #include <memory>
 namespace cldnn {
 namespace onednn {
 
 struct ConcatenationImplementationManager : public ImplementationManager {
-    ConcatenationImplementationManager() : ImplementationManager(impl_types::onednn) {}
+    ConcatenationImplementationManager() : ImplementationManager(impl_types::onednn, shape_types::static_shape) {}
 
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override;
 

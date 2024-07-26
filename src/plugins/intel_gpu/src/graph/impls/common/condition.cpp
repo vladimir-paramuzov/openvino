@@ -4,7 +4,7 @@
 
 #include "condition_inst.h"
 #include "data_inst.h"
-#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/implementation_map.hpp"
 #include "register.hpp"
 
 #include <algorithm>

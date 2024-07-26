@@ -49,7 +49,6 @@
 #include "intel_gpu/primitives/range.hpp"
 #include "intel_gpu/primitives/reduce.hpp"
 #include "intel_gpu/primitives/region_yolo.hpp"
-#include "intel_gpu/primitives/reorder.hpp"
 #include "intel_gpu/primitives/reorg_yolo.hpp"
 #include "intel_gpu/primitives/resample.hpp"
 #include "intel_gpu/primitives/reshape.hpp"
@@ -138,7 +137,6 @@ REGISTER_OCL(random_uniform);
 REGISTER_OCL(range);
 REGISTER_OCL(reduce);
 REGISTER_OCL(region_yolo);
-REGISTER_OCL(reorder);
 REGISTER_OCL(reorg_yolo);
 REGISTER_OCL(reshape);
 REGISTER_OCL(reverse);

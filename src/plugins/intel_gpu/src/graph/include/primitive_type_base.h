@@ -4,8 +4,7 @@
 
 #pragma once
 
-#include "impls/registry/register.hpp"
-#include "intel_gpu/runtime/engine.hpp"
+#include "impls/registry/registry.hpp"
 #include "intel_gpu/runtime/layout.hpp"
 #include "intel_gpu/runtime/debug_configuration.hpp"
 
@@ -14,7 +13,7 @@
 #include "program_node.h"
 #include "primitive_inst.h"
 #include "intel_gpu/graph/network.hpp"
-#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/implementation_manager.hpp"
 
 #include <memory>
 #include <string>
@@ -33,7 +32,6 @@ struct primitive_type_base : primitive_type {
         return std::make_shared<typed_primitive_inst<PType>>(network, node);
     }
 
-    // TODO: Should we get rid of engine type in impl map? Or we must pass internal build engine to get real ocl type?
     std::unique_ptr<primitive_impl> choose_impl(const cldnn::program_node& node) const override {
         return choose_impl(node, *node.get_kernel_impl_params());
     }
@@ -51,9 +49,10 @@ struct primitive_type_base : primitive_type {
             OPENVINO_ASSERT(node.type() == this, "[GPU] primitive_type_base::choose_impl: primitive type mismatch");
             auto impl_type = node.get_preferred_impl_type();
             auto shape_type = ImplementationManager::get_shape_type(runtime_params);
-            if (auto factory = implementation_map<PType>::get(impl_type, shape_type))
+            if (auto factory = get_impl(impl_type, shape_type))
                 return factory->create(node, runtime_params);
-            OPENVINO_THROW("[GPU] Could not find any implementatio with",
+
+            OPENVINO_THROW("[GPU] Could not find any implementation with",
                            " impl_type: ", impl_type,
                            " shape_type: ", shape_type);
         } catch (std::exception& e) {
@@ -66,13 +65,29 @@ struct primitive_type_base : primitive_type {
             OPENVINO_THROW(ss.str());
         }
     }
+    const ImplementationManager* get_impl(impl_types requested_impl_type, shape_types requested_shape_type) const override {
+        const auto& all_impls = get_all_implementations();
+        for (auto& impl : all_impls) {
+            impl_types impl_type = impl->get_impl_type();
+            if ((requested_impl_type & impl_type) != impl_type)
+                continue;
+
+            shape_types supported_shape_type = shape_types::any; // FIXME
+            if ((requested_shape_type & supported_shape_type) != requested_shape_type)
+                continue;
+
+            return impl.get();
+        }
+
+        OPENVINO_THROW("[GPU] Implementation not found");
+    }
 
      std::set<impl_types> get_available_impl_types(const cldnn::program_node& node) const override {
         OPENVINO_ASSERT(node.type() == this, "[GPU] primitive_type_base::get_available_impl_types: primitive type mismatch");
         auto supported_impls = get_supported_implementations(node);
         std::set<impl_types> supported_impl_types;
         for (const auto& impl : supported_impls) {
-            supported_impl_types.insert(impl->get_type());
+            supported_impl_types.insert(impl->get_impl_type());
         }
 
         return supported_impl_types;
@@ -101,21 +116,32 @@ struct primitive_type_base : primitive_type {
         return has_impl_for(node, node.get_preferred_impl_type(), shape_type);
     }
 
-    bool has_impl_for(const cldnn::program_node& node, impl_types impl_type) const override {
+    bool has_impl_for(const cldnn::program_node& node, impl_types requested_impl_type) const override {
         OPENVINO_ASSERT(node.type() == this, "[GPU] primitive_type_base::has_impl_for: primitive type mismatch");
         auto shape_type = ImplementationManager::get_shape_type(node);
-        return has_impl_for(node, impl_type, shape_type);
+        return has_impl_for(node, requested_impl_type, shape_type);
     }
 
-    bool has_impl_for(const cldnn::program_node& node, shape_types shape_type) const override {
+    bool has_impl_for(const cldnn::program_node& node, shape_types requested_shape_type) const override {
         OPENVINO_ASSERT(node.type() == this, "[GPU] primitive_type_base::has_impl_for: primitive type mismatch");
-        return has_impl_for(node, node.get_preferred_impl_type(), shape_type);
+        return has_impl_for(node, node.get_preferred_impl_type(), requested_shape_type);
     }
 
-    bool has_impl_for(const cldnn::program_node& node, impl_types impl_type, shape_types shape_type) const override {
+    bool has_impl_for(const cldnn::program_node& node, impl_types requested_impl_type, shape_types requested_shape_type) const override {
         OPENVINO_ASSERT(node.type() == this, "[GPU] primitive_type_base::has_impl_for: primitive type mismatch");
-        if (auto factory = implementation_map<PType>::get(impl_type, shape_type))
-            return factory->validate(node);
+        auto supported_impls = get_supported_implementations(node);
+        for (auto& impl : supported_impls) {
+            impl_types impl_type = impl->get_impl_type();
+            if ((requested_impl_type & impl_type) != impl_type)
+                continue;
+
+            shape_types supported_shape_type = shape_types::any; // FIXME
+            if ((requested_shape_type & supported_shape_type) != requested_shape_type)
+                continue;
+
+            return true;
+        }
+
         return false;
     }
 

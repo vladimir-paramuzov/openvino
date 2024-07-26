@@ -4,14 +4,14 @@
 
 #include "utils.hpp"
 #include "reorder_inst.h"
-#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/implementation_manager.hpp"
 
 #include <memory>
 namespace cldnn {
 namespace onednn {
 
 struct ReorderImplementationManager : public ImplementationManager {
-    ReorderImplementationManager() : ImplementationManager(impl_types::onednn) {}
+    ReorderImplementationManager() : ImplementationManager(impl_types::onednn, shape_types::static_shape) {}
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override;
 
     bool validate(const program_node& node) const override {

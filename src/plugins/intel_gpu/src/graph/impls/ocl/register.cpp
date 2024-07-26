@@ -57,7 +57,6 @@ void register_implementations() {
     REGISTER_OCL(range);
     REGISTER_OCL(reduce);
     REGISTER_OCL(region_yolo);
-    REGISTER_OCL(reorder);
     REGISTER_OCL(reorg_yolo);
     REGISTER_OCL(reshape);
     REGISTER_OCL(reverse);

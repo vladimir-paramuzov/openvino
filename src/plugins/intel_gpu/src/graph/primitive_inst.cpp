@@ -31,7 +31,7 @@
 #include "gather_inst.h"
 #include "broadcast_inst.h"
 #include "experimental_detectron_roi_feature_extractor_inst.hpp"
-#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/registry.hpp"
 #include "graph_optimizer/prepare_buffer_fusing.h"
 
 #include "intel_gpu/plugin/common_utils.hpp"
@@ -2017,8 +2017,8 @@ event::ptr primitive_inst::update_weights() {
                                        << " to " << expected_layout.to_short_string() << std::endl;
 
                 auto impl_type = (reorder_kernel_params->get_output_layout(0).format == format::custom) ? impl_types::onednn : impl_types::ocl;
-                auto factory = WeightsReordersFactory::get(impl_type, shape_types::static_shape);
-                auto reorder_impl = factory(*reorder_kernel_params);
+                auto factory = reorder::type_id()->get_impl(impl_type, shape_types::static_shape);
+                auto reorder_impl = factory->create(*reorder_kernel_params);
                 if (impl_type == impl_types::ocl) {
                     auto& kernels_cache = get_network().get_program()->get_kernels_cache();
                     auto kernels = kernels_cache.compile(*reorder_kernel_params, reorder_impl->get_kernels_source());

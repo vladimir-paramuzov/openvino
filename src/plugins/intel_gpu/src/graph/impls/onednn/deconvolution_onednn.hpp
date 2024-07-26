@@ -5,7 +5,7 @@
 #include "deconvolution_inst.h"
 #include "impls/onednn/utils.hpp"
 #include "intel_gpu/runtime/utils.hpp"
-#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/implementation_manager.hpp"
 
 #include <memory>
 
@@ -13,7 +13,7 @@ namespace cldnn {
 namespace onednn {
 
 struct DeconvolutionImplementationManager : public ImplementationManager {
-    DeconvolutionImplementationManager() : ImplementationManager(impl_types::onednn) {}
+    DeconvolutionImplementationManager() : ImplementationManager(impl_types::onednn, shape_types::static_shape) {}
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override;
 
     bool validate(const program_node& node) const override {

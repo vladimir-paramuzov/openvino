@@ -2,8 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "impls/registry/implementation_registry.hpp"
-#include "impls/registry/register.hpp"
+#include "impls/registry/registry.hpp"
 #include "intel_gpu/primitives/fully_connected.hpp"
 #include "intel_gpu/runtime/engine.hpp"
 #include "intel_gpu/runtime/itt.hpp"

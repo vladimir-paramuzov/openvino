@@ -3,7 +3,7 @@
 //
 
 #include "reduce_inst.h"
-#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/implementation_manager.hpp"
 
 #include <algorithm>
 #include <memory>
@@ -38,7 +38,7 @@ inline bool is_reduce_blocked_axes(reduce_node const& node) {
 }
 
 struct ReduceImplementationManager : public ImplementationManager {
-    ReduceImplementationManager() : ImplementationManager(impl_types::onednn) {}
+    ReduceImplementationManager() : ImplementationManager(impl_types::onednn, shape_types::static_shape) {}
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override;
 
     bool validate(const program_node& node) const override {

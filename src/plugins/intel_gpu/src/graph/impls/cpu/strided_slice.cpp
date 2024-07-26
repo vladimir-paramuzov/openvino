@@ -4,7 +4,7 @@
 
 #include "register.hpp"
 #include "strided_slice_inst.h"
-#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/implementation_map.hpp"
 
 #include "intel_gpu/runtime/error_handler.hpp"
 

@@ -2,7 +2,6 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "impls/registry/implementation_registry.hpp"
 #include "intel_gpu/primitives/adaptive_pooling.hpp"
 #include "intel_gpu/primitives/arg_max_min.hpp"
 #include "intel_gpu/primitives/assign.hpp"
@@ -84,7 +83,7 @@
 #include "intel_gpu/primitives/tile.hpp"
 #include "intel_gpu/primitives/unique.hpp"
 #include "test_utils.h"
-#include "impls/registry/register.hpp"
+#include "impls/registry/registry.hpp"
 #include <memory>
 
 using namespace cldnn;

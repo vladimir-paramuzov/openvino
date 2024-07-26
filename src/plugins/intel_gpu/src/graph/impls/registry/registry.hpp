@@ -4,37 +4,43 @@
 
 #pragma once
 
-#include "impls/registry/implementation_registry.hpp"
+#include "implementation_map.hpp"
 
 #define OV_GPU_WITH_ONEDNN ENABLE_ONEDNN_FOR_GPU
 #define OV_GPU_WITH_OCL 1
 #define OV_GPU_WITH_COMMON 1
 #define OV_GPU_WITH_CPU 1
 
-#define CREATE_INSTANCE(Type, ...) std::make_shared<Type>(__VA_ARGS__)
-#define GET_INSTANCE(Type, ...) cldnn::ImplementationsRegistry<cldnn::Type>::get(__VA_ARGS__)
+#define CREATE_INSTANCE(Type, ...) std::make_shared<cldnn::Type>(__VA_ARGS__)
+#define GET_INSTANCE(Type, ...) cldnn::implementation_map<cldnn::Type>::get(__VA_ARGS__)
 
 #if defined(OV_GPU_WITH_ONEDNN)
-#    define OV_GPU_INSTANCE_ONEDNN(...) CREATE_INSTANCE(__VA_ARGS__)
+#    define OV_GPU_CREATE_INSTANCE_ONEDNN(...) CREATE_INSTANCE(__VA_ARGS__)
 #else
-#    define OV_GPU_INSTANCE_ONEDNN(...)
+#    define OV_GPU_CREATE_INSTANCE_ONEDNN(...)
 #endif
 
 #if defined(OV_GPU_WITH_OCL)
-#    define OV_GPU_INSTANCE_OCL(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::ocl, __VA_ARGS__)
+#    define OV_GPU_CREATE_INSTANCE_OCL(...) CREATE_INSTANCE(__VA_ARGS__)
 #else
-#    define OV_GPU_INSTANCE_OCL(...)
+#    define OV_GPU_CREATE_INSTANCE_OCL(...)
+#endif
+
+#if defined(OV_GPU_WITH_OCL)
+#    define OV_GPU_GET_INSTANCE_OCL(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::ocl, __VA_ARGS__)
+#else
+#    define OV_GPU_GET_INSTANCE_OCL(...)
 #endif
 
 #if defined(OV_GPU_WITH_COMMON)
-#    define OV_GPU_INSTANCE_COMMON(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::common, __VA_ARGS__)
+#    define OV_GPU_GET_INSTANCE_COMMON(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::common, __VA_ARGS__)
 #else
-#    define OV_GPU_INSTANCE_COMMON(...)
+#    define OV_GPU_GET_INSTANCE_COMMON(...)
 #endif
 #if defined(OV_GPU_WITH_CPU)
-#    define OV_GPU_INSTANCE_CPU(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::cpu, __VA_ARGS__)
+#    define OV_GPU_GET_INSTANCE_CPU(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::cpu, __VA_ARGS__)
 #else
-#    define OV_GPU_INSTANCE_CPU(...)
+#    define OV_GPU_GET_INSTANCE_CPU(...)
 #endif
 
 #define COUNT_N(_1, _2, _3, _4, _5, N, ...) N
@@ -50,7 +56,7 @@
 #define IMPL_TYPE_COMMON_D impl_types::common, cldnn::shape_types::dynamic_shape
 #define IMPL_TYPE_COMMON_S impl_types::common, cldnn::shape_types::static_shape
 
-#define INSTANTIATE_1(prim, suffix) cldnn::ImplementationsRegistry<cldnn::prim>::get(cldnn::CAT(IMPL_TYPE_, suffix))
+#define INSTANTIATE_1(prim, suffix) cldnn::implementation_map<cldnn::prim>::get(cldnn::CAT(IMPL_TYPE_, suffix))
 #define INSTANTIATE_2(prim, suffix, ...) INSTANTIATE_1(prim, suffix), INSTANTIATE_1(prim, __VA_ARGS__)
 #define INSTANTIATE_3(prim, suffix, ...) INSTANTIATE_1(prim, suffix), INSTANTIATE_2(prim, __VA_ARGS__)
 #define INSTANTIATE_4(prim, suffix, ...) INSTANTIATE_1(prim, suffix), INSTANTIATE_3(prim, __VA_ARGS__)
