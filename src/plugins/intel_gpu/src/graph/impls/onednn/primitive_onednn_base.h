@@ -12,7 +12,6 @@
 #include "intel_gpu/runtime/memory.hpp"
 #include "intel_gpu/runtime/file_util.hpp"
 #include "to_string_utils.h"
-#include "register.hpp"
 #include "utils.hpp"
 #include "runtime/ocl/ocl_event.hpp"
 

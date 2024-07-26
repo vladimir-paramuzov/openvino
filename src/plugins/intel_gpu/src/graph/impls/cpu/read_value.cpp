@@ -3,7 +3,7 @@
 //
 
 #include "read_value_inst.h"
-#include "implementation_map.hpp"
+#include "impls/registry/implementation_registry.hpp"
 #include "register.hpp"
 #include "intel_gpu/runtime/error_handler.hpp"
 

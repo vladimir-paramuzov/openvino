@@ -31,7 +31,7 @@
 #include "gather_inst.h"
 #include "broadcast_inst.h"
 #include "experimental_detectron_roi_feature_extractor_inst.hpp"
-#include "implementation_map.hpp"
+#include "impls/registry/implementation_registry.hpp"
 #include "graph_optimizer/prepare_buffer_fusing.h"
 
 #include "intel_gpu/plugin/common_utils.hpp"

@@ -2,11 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include "fully_connected_onednn.hpp"
 #include "fully_connected_inst.h"
 #include "intel_gpu/primitives/fully_connected.hpp"
 #include "intel_gpu/runtime/utils.hpp"
 #include "primitive_onednn_base.h"
-#include "implementation_map.hpp"
+#include "impls/registry/implementation_registry.hpp"
 
 #include <oneapi/dnnl/dnnl.hpp>
 
@@ -377,95 +378,12 @@ public:
     }
 };
 
-struct FullyConnectedImplementationManager : public ImplementationManager {
-    std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const override {
-        OPENVINO_ASSERT(node.is_type<fully_connected>());
-        return onednn::fully_connected_onednn::create(static_cast<const fully_connected_node&>(node), params);
-    }
 
-    bool validate(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<fully_connected>());
-        const auto& fc_node = node.as<fully_connected>();
-        const auto& in_layout = fc_node.get_input_layout(0);
-        const auto& out_layout = fc_node.get_output_layout(0);
-        auto in0_dt = in_layout.data_type;
-        auto wei_dt = fc_node.weights().get_output_layout().data_type;
-        auto out_dt = out_layout.data_type;
-
-        if (one_of(data_types::i64, {in0_dt, wei_dt}))
-            return false;
-
-        if (!everyone_is(format::bfyx, in_layout.format, out_layout.format))
-            return false;
-
-        bool f16f16_case = everyone_is(data_types::f16, in0_dt, wei_dt) && one_of(out_dt, {data_types::f16, data_types::f32, data_types::i8});
-        bool f32f32_case = everyone_is(data_types::f32, in0_dt, wei_dt);
-        bool u8s8_case = one_of(in0_dt, {data_types::i8, data_types::u8}) &&
-                         one_of(wei_dt, {data_types::i8, data_types::u8}) &&
-                         one_of(out_dt, {data_types::f16, data_types::f32, data_types::i32, data_types::i8, data_types::u8});
-
-        if (!f16f16_case && !f32f32_case && !u8s8_case)
-            return false;
-
-        auto fc_prim = fc_node.get_primitive();
-
-        if (fc_prim->compressed_weights) {
-            if (!fc_prim->decompression_zero_point.empty()) {
-                auto decompression_zp_idx = fc_prim->bias.empty() ? 3 : 4;
-                auto decompression_zp_dt = fc_node.get_input_layout(decompression_zp_idx).data_type;
-                if ((wei_dt != ov::element::Type_t::u4 && wei_dt != ov::element::Type_t::u8) ||
-                    (decompression_zp_dt != ov::element::Type_t::u8 && decompression_zp_dt != ov::element::Type_t::i8)) {
-                    return false;
-                }
-            }
-        }
-
-        const auto& output_layout = fc_node.get_output_layout();
-        const auto& ps = output_layout.get_partial_shape();
-        size_t non_spatial_count = 2 + (fc_prim->input_size == 3 ? 1 : 0);
-        size_t rank = ps.size();
-
-        // OneDnn doesn't support spatial dimensions for output
-        for (auto i = non_spatial_count; i < rank; i++) {
-            if (ps[i].is_dynamic() || ps[i] != 1) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    in_out_fmts_t query_formats(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<fully_connected>());
-        std::vector<format::type> in_fmts(node.get_dependencies().size(), format::any);
-        std::vector<format::type> out_fmts(node.get_outputs_count(), format::any);
-
-        size_t out_rank = node.get_output_layout().get_rank();
-        for (size_t idx = 0 ; idx < node.get_dependencies().size() ; idx++) {
-            if (node.get_dependency(idx).is_constant())
-                continue;
-
-            auto target_format = format::get_default_format(out_rank);
-
-            in_fmts[idx] = target_format;
-        }
-        out_fmts[0] = format::get_default_format(out_rank);
-
-        return {in_fmts, out_fmts};
-    }
-
-    bool support_shapes(const kernel_impl_params& params) const override {
-        return get_shape_type(params) == shape_types::static_shape;
-    }
-};
-
-namespace detail {
-
-attach_fully_connected_onednn::attach_fully_connected_onednn() {
-    implementation_map<fully_connected>::add(impl_types::onednn, cldnn::make_unique<FullyConnectedImplementationManager>());
+std::unique_ptr<primitive_impl> FullyConnectedImplementationManager::create(const program_node& node, const kernel_impl_params& params) const {
+    OPENVINO_ASSERT(node.is_type<fully_connected>());
+    return onednn::fully_connected_onednn::create(static_cast<const fully_connected_node&>(node), params);
 }
 
-}  // namespace detail
 }  // namespace onednn
 }  // namespace cldnn
 

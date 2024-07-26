@@ -2,7 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "implementation_map.hpp"
+#include "impls/registry/implementation_registry.hpp"
+#include "impls/registry/register.hpp"
+#include "intel_gpu/primitives/fully_connected.hpp"
 #include "intel_gpu/runtime/engine.hpp"
 #include "intel_gpu/runtime/itt.hpp"
 
@@ -83,7 +85,7 @@ void compile_graph::run(program& p) {
 
         bool can_select_impl = !node->is_type<data>() &&
                                !(node->is_type<mutable_data>() && node->get_dependencies().empty()) &&
-                               (!node->is_dynamic() || (use_shape_agnostic_impl && node->type()->is_node_supported(*node, shape_types::dynamic_shape)));
+                               (!node->is_dynamic() || (use_shape_agnostic_impl && node->type()->has_impl_for(*node, shape_types::dynamic_shape)));
 
         // TODO: Remove this WA once we have shape agnostic reshape kernel
         if (node->is_type<reshape>() && node->is_dynamic() && !node->can_be_optimized())
@@ -123,17 +125,29 @@ void compile_graph::run(program& p) {
 
         if (!node->is_type<data>() && !p.is_internal_program()) {
             std::cerr << "-----------------------------\n";
-            auto all_impls = node->type()->get_available_impls(*node);
+            auto all_impls = node->type()->get_available_impl_types(*node);
             std::cerr << node->id() << " is_dynamic = " << node->is_dynamic() << " preferred initial: " << original_impl_type << std::endl;
             std::cerr << "available:\n";
             for (auto& impl : all_impls) {
-                std::cerr << "\t" << impl.first << " supports=" << impl.second->support_shapes(*node->get_kernel_impl_params());
+                std::cerr << "\t" << impl << " ";
             }
 
             std::cerr << std::endl;
             std::cerr << "can select: " << can_select_impl << std::endl;;
             std::cerr << "change_initial_impl: " << change_initial_impl << std::endl;;
             std::cerr << "preferred: " << node->get_preferred_impl_type() << std::endl;;
+
+            std::cerr << "query via new API: \n";
+            const auto& all_list = node->type()->get_all_implementations();
+            std::cerr << "ALL: \n";
+            for (auto& impl : all_list) {
+                std::cerr << "Impl! " << static_cast<void*>(impl.get()) << std::endl;
+            }
+            const auto& supported_list = node->type()->get_supported_implementations(*node);
+            std::cerr << "Supported: \n";
+            for (auto& impl : all_list) {
+                std::cerr << "Impl! " << static_cast<void*>(impl.get()) << std::endl;
+            }
             std::cerr << "-----------------------------\n";
         }
 

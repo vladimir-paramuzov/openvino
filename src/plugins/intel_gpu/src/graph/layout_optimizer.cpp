@@ -127,7 +127,7 @@ bool layout_optimizer::is_format_supported(program_node& node, format::type fmt)
     new_layout.format = fmt;
     node.set_output_layout(new_layout, false);
 
-    auto supported = node.type()->is_node_supported(node);
+    auto supported = node.type()->has_impl_for(node);
 
     node.set_output_layout(prev_layout, false);
 
@@ -1046,7 +1046,7 @@ format layout_optimizer::get_expected_format(deconvolution_node const& node) {
     auto expected_shape = output_layout.get_shape();
     bool use_onednn_impls = _optimization_attributes.use_onednn_impls;
 
-    auto available = node.get_primitive()->type->get_available_impls(node);
+    auto available = node.get_primitive()->type->get_available_impl_types(node);
 
     if (use_onednn_impls && available.count(impl_types::onednn) > 0) {
         // XXX: need to take the situation into consideration where it is called from prepare_primitive_fusing
@@ -1251,14 +1251,14 @@ impl_types layout_optimizer::get_preferred_impl_type(program_node& node, format 
     auto prev_fmt = node.get_preferred_input_fmt(0);
     node.set_preferred_input_fmt(0, preferred_format);
     node.recalc_output_layout(false);
-    auto available = node.get_primitive()->type->get_available_impls(node);
+    auto available = node.get_primitive()->type->get_available_impl_types(node);
     node.set_preferred_input_fmt(0, prev_fmt);
 
     if (!_optimization_attributes.use_onednn_impls)
         available.erase(impl_types::onednn);
 
     if (available.size() == 1)
-        return available.begin()->first;
+        return *available.begin();
 
     if (node.is_in_shape_of_subgraph() && !node.is_type<reshape>())
         return impl_types::cpu;

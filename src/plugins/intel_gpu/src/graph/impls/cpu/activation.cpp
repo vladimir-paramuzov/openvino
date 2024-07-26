@@ -5,7 +5,7 @@
 #include "openvino/core/type/element_type_traits.hpp"
 #include "register.hpp"
 #include "activation_inst.h"
-#include "implementation_map.hpp"
+#include "impls/registry/implementation_registry.hpp"
 
 #include "intel_gpu/runtime/error_handler.hpp"
 

@@ -445,7 +445,7 @@ void remove_redundant_reorders::run(program& p) {
 
             auto old_output_layout_of_input = input.get_output_layout();
             input.set_output_layout(output_layout, false);
-            if (input.type()->is_node_supported(input)) {
+            if (input.type()->has_impl_for(input)) {
                 // Add fused_primitive_desc of reorder to the previous node which propagates original output layout
                 // during shape inference
                 if (input.is_type<mvn>() || input.is_type<concatenation>() || input.is_type<gather>() ||
@@ -599,7 +599,7 @@ void remove_redundant_reorders::run(program& p) {
         auto old_output_layout_of_input = input.get_output_layout();
         auto output_layout = node->get_output_layout();
         input.set_output_layout(output_layout, false);
-        if (input.type()->is_node_supported(input)) {
+        if (input.type()->has_impl_for(input)) {
             input.set_output_padding(node->get_output_layout().data_padding);
 
             // Add fused_primitive_desc of reorder to convolution which propagate original output layout to jitter

@@ -72,9 +72,6 @@
 #include "impls/ocl/register.hpp"
 #include "impls/cpu/register.hpp"
 #include "impls/common/register.hpp"
-#ifdef ENABLE_ONEDNN_FOR_GPU
-#include "impls/onednn/register.hpp"
-#endif
 
 #include "kernel_base.h"
 
@@ -251,9 +248,6 @@ void program::init_primitives() {
     if (!is_initialized) {
         common::register_implementations();
         ocl::register_implementations();
-#ifdef ENABLE_ONEDNN_FOR_GPU
-        onednn::register_implementations();
-#endif
         cpu::register_implementations();
         is_initialized = true;
     }

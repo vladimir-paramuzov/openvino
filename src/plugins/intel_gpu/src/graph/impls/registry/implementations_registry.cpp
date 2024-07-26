@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include "implementation_map.hpp"
+#include "implementation_registry.hpp"
 #include "program_node.h"
 
 namespace cldnn {
