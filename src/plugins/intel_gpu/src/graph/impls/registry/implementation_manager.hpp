@@ -29,14 +29,23 @@ struct implementation_key {
     }
 };
 
+using ValidateFunc = std::function<bool(const program_node& node)>;
 struct ImplementationManager {
 public:
     virtual std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const = 0;
     virtual std::unique_ptr<primitive_impl> create(const kernel_impl_params& params) const { OPENVINO_NOT_IMPLEMENTED; }
-    virtual bool validate(const program_node& node) const = 0;
+    virtual bool validate(const program_node& node) const {
+        if (m_vf) {
+            return m_vf(node);
+        }
+        return true;
+    }
     virtual bool support_shapes(const kernel_impl_params& param) const = 0;
     virtual in_out_fmts_t query_formats(const program_node& node) const = 0;
-    explicit ImplementationManager(impl_types impl_type, shape_types shape_type) : m_impl_type(impl_type), m_shape_type(shape_type) {}
+    ImplementationManager(impl_types impl_type, shape_types shape_type, ValidateFunc vf = [](const program_node&) { return true; })
+        : m_impl_type(impl_type)
+        , m_shape_type(shape_type)
+        , m_vf(vf) {}
     virtual ~ImplementationManager() = default;
 
     static shape_types get_shape_type(const program_node& node);
@@ -45,10 +54,13 @@ public:
     impl_types get_impl_type() const { return m_impl_type; }
     shape_types get_shape_type() const { return m_shape_type; }
 
+
+
 protected:
     static bool is_supported(const program_node& node, const std::set<key_type>& supported_keys, shape_types shape_type);
     impl_types m_impl_type;
     shape_types m_shape_type;
+    ValidateFunc m_vf;
 };
 
 template <typename primitive_kind>
@@ -77,9 +89,14 @@ struct ImplementationManagerLegacy : public ImplementationManager {
 
     using simple_factory_type = std::function<std::unique_ptr<primitive_impl>(const typed_program_node<primitive_kind>&, const kernel_impl_params&)>;
     ImplementationManagerLegacy(simple_factory_type factory, impl_types impl_type, shape_types shape_type, std::set<key_type> keys)
-        : ImplementationManager(impl_type, shape_type)
+        : ImplementationManager(impl_type, shape_type, nullptr)
         , m_factory(factory)
         , m_keys(keys) {}
+
+    ImplementationManagerLegacy(const ImplementationManagerLegacy* other, ValidateFunc vf)
+        : ImplementationManager(other->m_impl_type, other->m_shape_type, vf)
+        , m_factory(other->m_factory)
+        , m_keys(other->m_keys) {}
 
     ImplementationManagerLegacy() = default;
 

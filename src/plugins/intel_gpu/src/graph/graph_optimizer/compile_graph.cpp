@@ -2,29 +2,19 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include "impls/registry/implementation_manager.hpp"
 #include "impls/registry/registry.hpp"
-#include "intel_gpu/primitives/fully_connected.hpp"
 #include "intel_gpu/runtime/engine.hpp"
 #include "intel_gpu/runtime/itt.hpp"
 
 #include "pass_manager.h"
-#include "data_inst.h"
-#include "mutable_data_inst.h"
-#include "reshape_inst.h"
-#include "proposal_inst.h"
-#include "permute_inst.h"
-#include "quantize_inst.h"
-#include "arg_max_min_inst.h"
-#include "fully_connected_inst.h"
-#include "gemm_inst.h"
-#include "condition_inst.h"
-#include "loop_inst.h"
-#include "group_normalization_inst.h"
 #include "program_node.h"
+
+#include "intel_gpu/primitives/data.hpp"
+#include "intel_gpu/primitives/mutable_data.hpp"
 
 #include <iostream>
 #include <cmath>
-#include <iomanip>
 
 #include "openvino/runtime/threading/cpu_streams_executor.hpp"
 
@@ -46,128 +36,54 @@ void compile_graph::run(program& p) {
 
     for (size_t idx = 0; idx < proc_order.size(); idx++) {
         auto& node = *(std::next(proc_order.begin(), idx));
-        const bool use_shape_agnostic_impl = !p.get_config().get_property(ov::intel_gpu::use_only_static_kernels_for_dynamic_shape);
-        const impl_types original_impl_type = node->get_preferred_impl_type();
-
-        bool change_initial_impl = node->is_dynamic() && original_impl_type == impl_types::onednn;
-
-        if (change_initial_impl) {
-            if (node->is_type<fully_connected>()) {
-                // Do not change impl (i.e. do not use ocl shape-agnostic kernels)
-                // since oneDNN primitives/kernels caching mechanism will be used instead.
-                change_initial_impl = false;
-            } else if (node->is_type<gemm>()) {
-                // permute is fused to onednn gemm. The updated memory formats are not supported by ocl this keep onednn impl
-                for (const auto& dep : node->get_dependencies()) {
-                    if (dep.first->is_type<permute>() && dep.first->can_be_optimized() && !dep.first->is_runtime_skippable() &&
-                        node->get_preferred_input_fmt() != format::any)
-                        change_initial_impl = false;
-                }
-                for (const auto& user : node->get_users()) {
-                    if (user->is_type<permute>() && user->can_be_optimized() && !user->is_runtime_skippable() &&
-                        node->get_preferred_output_fmt() != format::any)
-                        change_initial_impl = false;
-                }
-            }
-            if (node->is_type<convolution>()) {
-                auto w_layout = node->as<convolution>().weights().get_output_layout();
-                // Convolution_fsv16_1x1 is only available shape agnostic kernel for onednn convolution which uses the block format.(fsv16)
-                // Onednn convolution doesn't support input padding but most of cldnn optimized convolution require input padding except fsv16_1x1.
-                if (w_layout.spatial(0) != 1 || w_layout.spatial(1) != 1) {
-                    change_initial_impl = false;
-                }
-            }
-        }
-
-        if (change_initial_impl)
-            node->set_preferred_impl_type(impl_types::ocl);
 
         bool can_select_impl = !node->is_type<data>() &&
-                               !(node->is_type<mutable_data>() && node->get_dependencies().empty()) &&
-                               (!node->is_dynamic() || (use_shape_agnostic_impl && node->type()->has_impl_for(*node, shape_types::dynamic_shape)));
-
-        // TODO: Remove this WA once we have shape agnostic reshape kernel
-        if (node->is_type<reshape>() && node->is_dynamic() && !node->can_be_optimized())
-            can_select_impl = false;
-
-        // TODO: Remove this WA once we have shape agnostic conv kernl with specified auto_pad attributes
-        if (node->is_type<convolution>() && node->is_dynamic() && !node->as<convolution>().use_explicit_padding()) {
-            can_select_impl = false;
-        }
-
-        // TODO: need to come up with better handling of unsupported shape agnostic cases
-        // e.g. process exceptions from choose_impl() and ignore those for dynamic parameters
-        if (node->is_type<fully_connected>() && node->is_dynamic() && node->get_output_pshape().size() > 3)
-            can_select_impl = false;
-
-        // onednn impls do not support shape agnostic kernel currently.
-        if (node->get_preferred_impl_type() == impl_types::onednn && node->is_dynamic())
-            can_select_impl = false;
-
-        // TODO: Remove this WA once we have shape agnostic arg_max_min_axis kernel with non-const k input
-        if (node->is_type<arg_max_min>() && node->is_dynamic() && node->as<arg_max_min>().get_primitive()->top_k == 0) {
-            can_select_impl = false;
-        }
-
-        bool is_planar = format::is_default_format(node->get_output_layout().format);
-
-        if (node->is_dynamic() && !is_planar) {
-            if (!(node->is_type<convolution>() && node->get_output_layout().format == cldnn::format::b_fs_yx_fsv16) &&
-                !(node->is_type<group_normalization>() && node->get_output_layout().format == cldnn::format::b_fs_yx_fsv16)) {
-                can_select_impl = false;
-            }
-        }
-
-        if (node->is_type<condition>() || node->is_type<loop>() || node->is_type<proposal>())
-            can_select_impl = true;
-
-
-        if (!node->is_type<data>() && !p.is_internal_program()) {
-            std::cerr << "-----------------------------\n";
-            auto all_impls = node->type()->get_available_impl_types(*node);
-            std::cerr << node->id() << " is_dynamic = " << node->is_dynamic() << " preferred initial: " << original_impl_type << std::endl;
-            std::cerr << "available:\n";
-            for (auto& impl : all_impls) {
-                std::cerr << "\t" << impl << " ";
-            }
-
-            std::cerr << std::endl;
-            std::cerr << "can select: " << can_select_impl << std::endl;;
-            std::cerr << "change_initial_impl: " << change_initial_impl << std::endl;;
-            std::cerr << "preferred: " << node->get_preferred_impl_type() << std::endl;;
-
-            std::cerr << "query via new API: \n";
-            const auto& all_list = node->type()->get_all_implementations();
-            std::cerr << "ALL: \n";
-            for (auto& impl : all_list) {
-                std::cerr << "Impl! " << static_cast<void*>(impl.get()) << std::endl;
-            }
-            const auto& supported_list = node->type()->get_supported_implementations(*node);
-            std::cerr << "Supported: \n";
-            for (auto& impl : all_list) {
-                std::cerr << "Impl! " << static_cast<void*>(impl.get()) << std::endl;
-            }
-            std::cerr << "-----------------------------\n";
-        }
-
+                               !(node->is_type<mutable_data>() && node->get_dependencies().empty());
 
         if (can_select_impl) {
-        //     tasks.push_back([node, &exception, change_initial_impl, original_impl_type] {
+    //     tasks.push_back([node, &exception, change_initial_impl, original_impl_type] {
                 try {
                     node->selected_impl = node->type()->choose_impl(*node);
-                    if (change_initial_impl) {
-                        GPU_DEBUG_TRACE_DETAIL << node->id() << ": use " << node->get_preferred_impl_type()
-                                               << " as initial impl instead of " << original_impl_type << std::endl;
-                        node->set_preferred_impl_type(original_impl_type);
+                    std::cerr << "-----------------------------\n";
+                    auto all_impls = node->type()->get_available_impl_types(*node);
+                    std::cerr << node->id() << " " << node->get_primitive()->type_string()
+                            << " is_dynamic = " << node->is_dynamic() << " preferred initial: " << node->get_preferred_impl_type() << std::endl;
+                    std::cerr << "available:\n";
+                    for (auto& impl : all_impls) {
+                        std::cerr << "\t" << impl << " ";
                     }
+                    std::cerr << std::endl;
+
+
+                    std::cerr << " SELECTED: " << static_cast<void*>(node->selected_impl.get()) << std::endl;
+                    if (node->selected_impl) {
+                        auto factory = node->type()->get_best_impl(node->get_preferred_impl_type(), ImplementationManager::get_shape_type(*node));
+                        std::cerr <<"\t" << node->selected_impl->get_kernel_name() << std::endl;
+                        std::cerr <<"\t" << factory->get_impl_type() << std::endl;
+                        std::cerr <<"\t" << factory->get_shape_type() << std::endl;
+
+                    }
+                    std::cerr << "preferred: " << node->get_preferred_impl_type() << std::endl;;
+
+                    std::cerr << "query via new API: \n";
+                    const auto& all_list = node->type()->get_all_implementations();
+                    std::cerr << "ALL: \n";
+                    for (auto& impl : all_list) {
+                        std::cerr << "Impl! " << static_cast<void*>(impl.get()) << " " << impl->get_impl_type() << " " << impl->get_shape_type() << std::endl;
+                    }
+
+                    if (node->is_dynamic()) {
+                        node->available_impls = node->type()->get_supported_implementations(*node);
+                    }
+                    std::cerr << "Supported: \n";
+                    for (auto& impl : node->available_impls) {
+                        std::cerr << "Impl! " << static_cast<void*>(impl.get()) << " " << impl->get_impl_type() << " " << impl->get_shape_type() << std::endl;
+                    }
+                    std::cerr << "-----------------------------\n";
                 } catch(...) {
                     exception = std::current_exception();
                 }
-            // } );
-        } else {
-            if (change_initial_impl) {
-                node->set_preferred_impl_type(original_impl_type);
-            }
+        // } );
         }
     }
 

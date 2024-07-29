@@ -16,7 +16,12 @@ struct ReorderImplementationManager : public ImplementationManager {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<reorder>());
+        const auto& info = node.get_program().get_engine().get_device_info();
+        if (!info.supports_immad)
+            return false;
+
         static const std::vector<format::type> supported_formats = {
+            format::custom,
             format::bfyx,
             format::byxf,
             format::b_fs_zyx_fsv16,
@@ -48,9 +53,6 @@ struct ReorderImplementationManager : public ImplementationManager {
         auto in_dt = input_layout.data_type;
         auto out_dt = output_layout.data_type;
 
-        if (output_fmt == format::custom)
-            return true;
-
         if (!one_of(input_fmt.value, supported_formats) || !one_of(output_fmt.value, supported_formats))
             return false;
 
@@ -77,7 +79,7 @@ struct ReorderImplementationManager : public ImplementationManager {
         if (output_fmt == format::bfyx && out_dt == data_types::f32)
             return false;
 
-        return true;
+        return ImplementationManager::validate(node);
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {

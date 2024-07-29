@@ -5,43 +5,12 @@
 #pragma once
 
 #include "implementation_map.hpp"
+#include "intel_gpu/primitives/arg_max_min.hpp"
 
 #define OV_GPU_WITH_ONEDNN ENABLE_ONEDNN_FOR_GPU
 #define OV_GPU_WITH_OCL 1
 #define OV_GPU_WITH_COMMON 1
 #define OV_GPU_WITH_CPU 1
-
-#define CREATE_INSTANCE(Type, ...) std::make_shared<cldnn::Type>(__VA_ARGS__)
-#define GET_INSTANCE(Type, ...) cldnn::implementation_map<cldnn::Type>::get(__VA_ARGS__)
-
-#if defined(OV_GPU_WITH_ONEDNN)
-#    define OV_GPU_CREATE_INSTANCE_ONEDNN(...) CREATE_INSTANCE(__VA_ARGS__)
-#else
-#    define OV_GPU_CREATE_INSTANCE_ONEDNN(...)
-#endif
-
-#if defined(OV_GPU_WITH_OCL)
-#    define OV_GPU_CREATE_INSTANCE_OCL(...) CREATE_INSTANCE(__VA_ARGS__)
-#else
-#    define OV_GPU_CREATE_INSTANCE_OCL(...)
-#endif
-
-#if defined(OV_GPU_WITH_OCL)
-#    define OV_GPU_GET_INSTANCE_OCL(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::ocl, __VA_ARGS__)
-#else
-#    define OV_GPU_GET_INSTANCE_OCL(...)
-#endif
-
-#if defined(OV_GPU_WITH_COMMON)
-#    define OV_GPU_GET_INSTANCE_COMMON(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::common, __VA_ARGS__)
-#else
-#    define OV_GPU_GET_INSTANCE_COMMON(...)
-#endif
-#if defined(OV_GPU_WITH_CPU)
-#    define OV_GPU_GET_INSTANCE_CPU(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::cpu, __VA_ARGS__)
-#else
-#    define OV_GPU_GET_INSTANCE_CPU(...)
-#endif
 
 #define COUNT_N(_1, _2, _3, _4, _5, N, ...) N
 #define COUNT(...) COUNT_N(__VA_ARGS__, 5, 4, 3, 2, 1)
@@ -64,6 +33,43 @@
 #define FOR_EACH_(N, prim, ...) CAT(INSTANTIATE_, N)(prim, __VA_ARGS__)
 #define INSTANTIATE(prim, ...) IDENTITY(FOR_EACH_(COUNT(__VA_ARGS__), prim, __VA_ARGS__))
 
+#define CREATE_INSTANCE(Type, ...) std::make_shared<cldnn::Type>(__VA_ARGS__)
+#define GET_INSTANCE(Type, ...) cldnn::implementation_map<cldnn::Type>::get(__VA_ARGS__)
+
+#if defined(OV_GPU_WITH_ONEDNN)
+#    define OV_GPU_CREATE_INSTANCE_ONEDNN(...) CREATE_INSTANCE(__VA_ARGS__)
+#else
+#    define OV_GPU_CREATE_INSTANCE_ONEDNN(...)
+#endif
+
+#if defined(OV_GPU_WITH_OCL)
+#    define OV_GPU_CREATE_INSTANCE_OCL(...) CREATE_INSTANCE(__VA_ARGS__)
+#else
+#    define OV_GPU_CREATE_INSTANCE_OCL(...)
+#endif
+
+#if defined(OV_GPU_WITH_OCL)
+#    define OV_GPU_GET_INSTANCE_OCL_1(prim, shape_types) GET_INSTANCE(prim, cldnn::impl_types::ocl, shape_types)
+#    define OV_GPU_GET_INSTANCE_OCL_2(prim, shape_types, verify_callback) \
+    std::make_shared<cldnn::ImplementationManagerLegacy<cldnn::prim>>( \
+    std::dynamic_pointer_cast<cldnn::ImplementationManagerLegacy<cldnn::prim>>(GET_INSTANCE(prim, cldnn::impl_types::ocl, shape_types)).get(), verify_callback)
+#    define SELECT(N, prim, ...) CAT(OV_GPU_GET_INSTANCE_OCL_, N)(prim, __VA_ARGS__)
+#    define OV_GPU_GET_INSTANCE_OCL(prim, ...) IDENTITY(SELECT(COUNT(__VA_ARGS__), prim, __VA_ARGS__))
+#else
+#    define OV_GPU_GET_INSTANCE_OCL(...)
+#endif
+
+#if defined(OV_GPU_WITH_COMMON)
+#    define OV_GPU_GET_INSTANCE_COMMON(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::common, __VA_ARGS__)
+#else
+#    define OV_GPU_GET_INSTANCE_COMMON(...)
+#endif
+#if defined(OV_GPU_WITH_CPU)
+#    define OV_GPU_GET_INSTANCE_CPU(prim, ...) GET_INSTANCE(prim, cldnn::impl_types::cpu, __VA_ARGS__)
+#else
+#    define OV_GPU_GET_INSTANCE_CPU(...)
+#endif
+
 #define REGISTER_DEFAULT_IMPLS(prim, ...)  \
     namespace cldnn { struct prim; } \
     template<> struct ov::intel_gpu::Registry<cldnn::prim> { \
@@ -84,6 +90,9 @@
 namespace ov {
 namespace intel_gpu {
 
+// Global list of implementations for given primitive type
+// List must be sorted by priority of implementations
+// Same impls may repeat multiple times with different configurations
 template<typename PrimitiveType>
 struct Registry {
     static const std::vector<std::shared_ptr<cldnn::ImplementationManager>>& get_implementations() {
@@ -95,6 +104,7 @@ struct Registry {
 }  // namespace intel_gpu
 }  // namespace ov
 
+REGISTER_IMPLS(arg_max_min);
 REGISTER_IMPLS(concatenation);
 REGISTER_IMPLS(convolution);
 REGISTER_IMPLS(deconvolution);
@@ -103,6 +113,7 @@ REGISTER_IMPLS(gemm);
 REGISTER_IMPLS(pooling);
 REGISTER_IMPLS(reduce);
 REGISTER_IMPLS(reorder);
+REGISTER_IMPLS(reshape);
 
 REGISTER_DEFAULT_IMPLS(assign, CPU_S, CPU_D);
 REGISTER_DEFAULT_IMPLS(read_value, CPU_S, CPU_D);
@@ -113,7 +124,6 @@ REGISTER_DEFAULT_IMPLS(non_max_suppression_gather, CPU_S);
 REGISTER_DEFAULT_IMPLS(proposal, CPU_S, CPU_D);
 REGISTER_DEFAULT_IMPLS(activation, OCL_S, OCL_D, CPU_S, CPU_D);
 REGISTER_DEFAULT_IMPLS(adaptive_pooling, OCL_S);
-REGISTER_DEFAULT_IMPLS(arg_max_min, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(batch_to_space, OCL_S);
 REGISTER_DEFAULT_IMPLS(border, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(broadcast, OCL_S, OCL_D, CPU_S, CPU_D);
@@ -154,7 +164,6 @@ REGISTER_DEFAULT_IMPLS(random_uniform, OCL_S);
 REGISTER_DEFAULT_IMPLS(range, OCL_S, OCL_D, CPU_S, CPU_D);
 REGISTER_DEFAULT_IMPLS(region_yolo, OCL_S);
 REGISTER_DEFAULT_IMPLS(reorg_yolo, OCL_S);
-REGISTER_DEFAULT_IMPLS(reshape, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(reverse, OCL_S);
 REGISTER_DEFAULT_IMPLS(reverse_sequence, OCL_S);
 REGISTER_DEFAULT_IMPLS(rms, OCL_S, OCL_D);
@@ -190,27 +199,3 @@ REGISTER_DEFAULT_IMPLS(unique_count, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(unique_gather, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(scaled_dot_product_attention, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(rope, OCL_S, OCL_D);
-
-#undef COUNT_N
-#undef COUNT
-#undef CAT
-
-#undef IDENTITY
-
-#undef IMPL_TYPE_CPU_D
-#undef IMPL_TYPE_CPU_S
-#undef IMPL_TYPE_OCL_D
-#undef IMPL_TYPE_OCL_S
-#undef IMPL_TYPE_COMMON_D
-#undef IMPL_TYPE_COMMON_S
-
-#undef INSTANTIATE_1
-#undef INSTANTIATE_2
-#undef INSTANTIATE_3
-#undef INSTANTIATE_4
-
-#undef FOR_EACH_
-#undef INSTANTIATE
-
-#undef REGISTER_DEFAULT_IMPLS
-#undef REGISTER_IMPLS

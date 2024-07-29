@@ -2,13 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
-#include <array>
-
 #include "register.hpp"
 #include "crop_inst.h"
 #include "impls/registry/implementation_map.hpp"
-
-#include "intel_gpu/runtime/error_handler.hpp"
 
 #include "openvino/op/slice.hpp"
 

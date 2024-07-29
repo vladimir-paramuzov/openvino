@@ -22,6 +22,10 @@ struct ConvolutionImplementationManager : public ImplementationManager {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<convolution>());
+        const auto& info = node.get_program().get_engine().get_device_info();
+        if (!info.supports_immad)
+            return false;
+
         const auto& conv_node = node.as<convolution>();
         if (!is_supported_format(node.get_preferred_input_fmt(0)))
             return false;
@@ -45,7 +49,7 @@ struct ConvolutionImplementationManager : public ImplementationManager {
         if (conv_node.weights_zero_points_term())
             return false;
 
-        return true;
+        return ImplementationManager::validate(node);
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override;

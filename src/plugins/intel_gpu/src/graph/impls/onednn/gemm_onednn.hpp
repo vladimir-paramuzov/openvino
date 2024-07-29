@@ -17,6 +17,10 @@ struct GemmImplementationManager : public ImplementationManager {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<gemm>());
+        const auto& info = node.get_program().get_engine().get_device_info();
+        if (!info.supports_immad)
+            return false;
+
         const auto& gemm_node = node.as<gemm>();
         const auto& in0_layout = node.get_input_layout(0);
         const auto& in1_layout = node.get_input_layout(1);
@@ -59,7 +63,7 @@ struct GemmImplementationManager : public ImplementationManager {
         if (gemm_node.get_primitive()->indirect_a || gemm_node.get_primitive()->indirect_b)
             return false;
 
-        return true;
+        return ImplementationManager::validate(node);
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {

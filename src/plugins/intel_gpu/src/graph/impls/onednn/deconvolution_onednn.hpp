@@ -18,6 +18,9 @@ struct DeconvolutionImplementationManager : public ImplementationManager {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<deconvolution>());
+        const auto& info = node.get_program().get_engine().get_device_info();
+        if (!info.supports_immad)
+            return false;
         const auto& deconv_node = node.as<deconvolution>();
         static const std::vector<format::type> supported_formats = {
             format::bfyx,
@@ -65,7 +68,7 @@ struct DeconvolutionImplementationManager : public ImplementationManager {
         if (!is_supported_post_ops(deconv_node))
             return false;
 
-        return true;
+        return ImplementationManager::validate(node);
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override;

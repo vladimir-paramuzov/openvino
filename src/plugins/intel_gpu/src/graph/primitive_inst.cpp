@@ -2017,7 +2017,7 @@ event::ptr primitive_inst::update_weights() {
                                        << " to " << expected_layout.to_short_string() << std::endl;
 
                 auto impl_type = (reorder_kernel_params->get_output_layout(0).format == format::custom) ? impl_types::onednn : impl_types::ocl;
-                auto factory = reorder::type_id()->get_impl(impl_type, shape_types::static_shape);
+                auto factory = reorder::type_id()->get_best_impl(impl_type, shape_types::static_shape);
                 auto reorder_impl = factory->create(*reorder_kernel_params);
                 if (impl_type == impl_types::ocl) {
                     auto& kernels_cache = get_network().get_program()->get_kernels_cache();

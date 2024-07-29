@@ -8,6 +8,9 @@
 #if OV_GPU_WITH_ONEDNN
     #include "impls/onednn/convolution_onednn.hpp"
 #endif
+#if OV_GPU_WITH_OCL
+    #include "impls/ocl/convolution.hpp"
+#endif
 
 namespace ov {
 namespace intel_gpu {
@@ -17,8 +20,11 @@ using namespace cldnn;
 const std::vector<std::shared_ptr<cldnn::ImplementationManager>>& Registry<convolution>::get_implementations() {
     static const std::vector<std::shared_ptr<ImplementationManager>> impls = {
         OV_GPU_CREATE_INSTANCE_ONEDNN(onednn::ConvolutionImplementationManager),
-        OV_GPU_GET_INSTANCE_OCL(convolution, shape_types::static_shape),
-        OV_GPU_GET_INSTANCE_OCL(convolution, shape_types::dynamic_shape)
+        OV_GPU_CREATE_INSTANCE_OCL(ocl::ConvolutionImplementationManager, shape_types::static_shape),
+        OV_GPU_CREATE_INSTANCE_OCL(ocl::ConvolutionImplementationManager, shape_types::dynamic_shape,
+            [](const cldnn::program_node& node){
+                return node.as<convolution>().use_explicit_padding();
+        }),
     };
 
     return impls;

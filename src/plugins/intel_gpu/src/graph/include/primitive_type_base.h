@@ -32,10 +32,6 @@ struct primitive_type_base : primitive_type {
         return std::make_shared<typed_primitive_inst<PType>>(network, node);
     }
 
-    std::unique_ptr<primitive_impl> choose_impl(const cldnn::program_node& node) const override {
-        return choose_impl(node, *node.get_kernel_impl_params());
-    }
-
     in_out_fmts_t query_preferred_formats(const cldnn::program_node& node, impl_types impl_type) const  override {
         OPENVINO_ASSERT(node.type() == this, "[GPU] primitive_type_base::choose_impl: primitive type mismatch");
         auto shape_type = ImplementationManager::get_shape_type(node);
@@ -44,12 +40,21 @@ struct primitive_type_base : primitive_type {
         return {};
     }
 
+    std::unique_ptr<primitive_impl> choose_impl(const cldnn::program_node& node) const override {
+        return choose_impl(node, *node.get_kernel_impl_params());
+    }
+
     std::unique_ptr<primitive_impl> choose_impl(const cldnn::program_node& node, const kernel_impl_params& runtime_params) const override {
+        return choose_impl(node, *node.get_kernel_impl_params(), ImplementationManager::get_shape_type(runtime_params));
+    }
+
+    std::unique_ptr<primitive_impl> choose_impl(const cldnn::program_node& node,
+                                                const kernel_impl_params& runtime_params,
+                                                shape_types shape_type) const override {
         try {
             OPENVINO_ASSERT(node.type() == this, "[GPU] primitive_type_base::choose_impl: primitive type mismatch");
             auto impl_type = node.get_preferred_impl_type();
-            auto shape_type = ImplementationManager::get_shape_type(runtime_params);
-            if (auto factory = get_impl(impl_type, shape_type))
+            if (auto factory = get_best_impl(impl_type, shape_type))
                 return factory->create(node, runtime_params);
 
             OPENVINO_THROW("[GPU] Could not find any implementation with",
@@ -65,14 +70,15 @@ struct primitive_type_base : primitive_type {
             OPENVINO_THROW(ss.str());
         }
     }
-    const ImplementationManager* get_impl(impl_types requested_impl_type, shape_types requested_shape_type) const override {
+
+    const ImplementationManager* get_best_impl(impl_types requested_impl_type, shape_types requested_shape_type) const override {
         const auto& all_impls = get_all_implementations();
         for (auto& impl : all_impls) {
             impl_types impl_type = impl->get_impl_type();
             if ((requested_impl_type & impl_type) != impl_type)
                 continue;
 
-            shape_types supported_shape_type = shape_types::any; // FIXME
+            shape_types supported_shape_type = impl->get_shape_type();
             if ((requested_shape_type & supported_shape_type) != requested_shape_type)
                 continue;
 

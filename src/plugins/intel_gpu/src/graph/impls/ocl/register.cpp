@@ -16,7 +16,6 @@ void register_implementations() {
     REGISTER_OCL(broadcast);
     REGISTER_OCL(bucketize);
     REGISTER_OCL(concatenation);
-    REGISTER_OCL(convolution);
     REGISTER_OCL(crop);
     REGISTER_OCL(custom_gpu_primitive);
     REGISTER_OCL(deconvolution);

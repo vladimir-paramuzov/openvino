@@ -19,6 +19,10 @@ struct FullyConnectedImplementationManager : public ImplementationManager {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<fully_connected>());
+        const auto& info = node.get_program().get_engine().get_device_info();
+        if (!info.supports_immad)
+            return false;
+
         const auto& fc_node = node.as<fully_connected>();
         const auto& in_layout = fc_node.get_input_layout(0);
         const auto& out_layout = fc_node.get_output_layout(0);
@@ -66,7 +70,7 @@ struct FullyConnectedImplementationManager : public ImplementationManager {
             }
         }
 
-        return true;
+        return ImplementationManager::validate(node);
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {

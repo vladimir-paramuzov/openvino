@@ -12,7 +12,6 @@
 #include "intel_gpu/primitives/bucketize.hpp"
 #include "intel_gpu/primitives/concatenation.hpp"
 #include "intel_gpu/primitives/convert_color.hpp"
-#include "intel_gpu/primitives/convolution.hpp"
 #include "intel_gpu/primitives/crop.hpp"
 #include "intel_gpu/primitives/ctc_greedy_decoder.hpp"
 #include "intel_gpu/primitives/ctc_loss.hpp"
@@ -95,7 +94,6 @@ REGISTER_OCL(border);
 REGISTER_OCL(broadcast);
 REGISTER_OCL(bucketize);
 REGISTER_OCL(concatenation);
-REGISTER_OCL(convolution);
 REGISTER_OCL(crop);
 REGISTER_OCL(custom_gpu_primitive);
 REGISTER_OCL(data);

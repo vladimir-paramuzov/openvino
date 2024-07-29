@@ -43,6 +43,10 @@ struct ReduceImplementationManager : public ImplementationManager {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<reduce>());
+        const auto& info = node.get_program().get_engine().get_device_info();
+        if (!info.supports_immad)
+            return false;
+
         const auto& reduce_node = node.as<reduce>();
         auto preferred_format = reduce_node.get_preferred_input_fmt(0);
 
@@ -107,7 +111,7 @@ struct ReduceImplementationManager : public ImplementationManager {
         if (reduce_prim->keep_dims == false && is_reduce_blocked_axes(node))
             return false;
 
-        return true;
+        return ImplementationManager::validate(node);
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {

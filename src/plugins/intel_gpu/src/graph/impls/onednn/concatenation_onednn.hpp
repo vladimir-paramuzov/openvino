@@ -16,6 +16,10 @@ struct ConcatenationImplementationManager : public ImplementationManager {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<concatenation>());
+        const auto& info = node.get_program().get_engine().get_device_info();
+        if (!info.supports_immad)
+            return false;
+
         static const std::vector<ov::element::Type_t> supported_types = { ov::element::f32, ov::element::f16, ov::element::u8, ov::element::i8 };
         static const std::vector<format::type> supported_in_fmts = {
             format::bfyx,
@@ -57,7 +61,7 @@ struct ConcatenationImplementationManager : public ImplementationManager {
             }
         }
 
-        return true;
+        return ImplementationManager::validate(node);
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {

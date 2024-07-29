@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "impls/registry/implementation_manager.hpp"
 #include "intel_gpu/primitives/primitive.hpp"
 #include "intel_gpu/primitives/implementation_desc.hpp"
 #include "intel_gpu/graph/program.hpp"
@@ -480,6 +481,7 @@ protected:
     program& myprog;
 
     std::unique_ptr<primitive_impl> selected_impl;
+    std::vector<std::shared_ptr<ImplementationManager>> available_impls;
 
     std::vector<bool> valid_output_layouts;
     std::vector<layout> output_layouts;

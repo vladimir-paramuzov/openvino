@@ -61,7 +61,7 @@ TEST(weights_factory, reorder_test) {
     reorder_kernel_params->prog = network.get_program().get();
 
     // Create new generic_layer_impl
-    auto factory = reorder::type_id()->get_impl(impl_types::ocl, shape_types::static_shape);
+    auto factory = reorder::type_id()->get_best_impl(impl_types::ocl, shape_types::static_shape);
     auto reorder_impl = factory->create(*reorder_kernel_params);
     ASSERT_TRUE(reorder_impl != nullptr);
 
