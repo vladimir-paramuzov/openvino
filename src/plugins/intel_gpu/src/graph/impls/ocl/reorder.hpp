@@ -19,43 +19,11 @@ struct ReorderImplementationManager : public ImplementationManager {
 
     bool validate(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<reorder>());
-        if (!node.is_dynamic())
-            return true;
 
-        static const std::vector<format::type> supported_dyn_formats = {
-            format::bfyx,
-            format::bfzyx,
-            format::bfwzyx,
-            format::b_fs_yx_fsv16
-        };
-        static const std::vector<ov::element::Type_t> supported_dyn_types = {
-            ov::element::f32,
-            ov::element::f16,
-            ov::element::u8,
-            ov::element::i8,
-            ov::element::i32,
-            ov::element::i64,
-        };
-
-        const auto& input_layout = node.get_input_layout(0);
         const auto& output_layout = node.get_output_layout(0);
-
-        auto input_fmt = input_layout.format;
         auto output_fmt = output_layout.format;
-
-        auto in_dt = input_layout.data_type;
-        auto out_dt = output_layout.data_type;
-
         if (output_fmt == format::custom)
             return false;
-
-        if (m_shape_type == shape_types::dynamic_shape) {
-            if (!one_of(input_fmt.value, supported_dyn_formats) || !one_of(output_fmt.value, supported_dyn_formats))
-                return false;
-
-            if (!one_of(in_dt, supported_dyn_types) || !one_of(out_dt, supported_dyn_types))
-                return false;
-        }
 
         return true;
     }

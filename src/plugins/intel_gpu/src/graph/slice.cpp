@@ -96,6 +96,10 @@ std::string slice_inst::to_string(slice_node const& node) {
 }
 
 void slice_inst::update_shape_info_tensor(const kernel_impl_params& params) {
+    if (!_shape_info_memory) {
+        int64_t shape_elements = _node->get_total_shape_info_size();
+        _shape_info_memory = _network.get_engine().allocate_memory(layout{{shape_elements}, data_types::i32, format::bfyx}, false);
+    }
     mem_lock<int32_t> lock(_shape_info_memory, _network.get_stream());
     auto shape_info_ptr = lock.data();
     size_t offset = 0;

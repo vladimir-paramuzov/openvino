@@ -376,7 +376,7 @@ void primitive_inst::update_shape() {
         input_shape_changed = true;
     }
 
-    if (!_node->is_type<kv_cache>() && !input_shape_changed && !_node->generates_dynamic_output() && _impl_params->get_output_layout().is_static())
+    if (!_node->is_type<kv_cache>() && !input_shape_changed && _impl_params->get_output_layout().is_static())
         return;
 
     std::vector<event::ptr> dependencies_events;
@@ -932,6 +932,11 @@ void primitive_inst::fill_shape_info_data(const layout& runtime_layout, const la
 }
 
 void primitive_inst::update_shape_info_tensor(const kernel_impl_params& params) {
+    if (!_shape_info_memory) {
+        int64_t shape_elements = _node->get_total_shape_info_size();
+        _shape_info_memory = _network.get_engine().allocate_memory(layout{{shape_elements}, data_types::i32, format::bfyx}, false);
+    }
+
     mem_lock<int32_t> lock(_shape_info_memory, _network.get_stream());
     auto shape_info_ptr = lock.data();
     size_t offset = 0;
@@ -955,7 +960,7 @@ bool primitive_inst::update_impl(bool use_async_compilation) {
     auto prev_impl_str =  _impl != nullptr ? _impl->get_kernel_name() : "nullptr";
 
     // no need to update impl for optimized out primitive
-    if (can_be_optimized()) {
+    if (_impl != nullptr && can_be_optimized()) {
         GPU_DEBUG_TRACE_DETAIL << id() << " Skip impl update: primitive is optimized out" << std::endl;
         return shape_changed();
     }
@@ -1584,6 +1589,7 @@ event::ptr primitive_inst::execute(const std::vector<event::ptr>& events) {
                         "[GPU] Can't execute ", primitive_id, " primitive as output layout is dynamic in runtime");
     }
     update_shape_done_by_other = false; // reset
+    OPENVINO_ASSERT(_impl != nullptr, "[GPU] Implementation is nullptr for ", primitive_id,  " primitive");
 
     std::function<bool(const cldnn::primitive_inst*)> has_dynamic_dependencies_insts =
         [&has_dynamic_dependencies_insts](const cldnn::primitive_inst* prim_inst) {
@@ -1602,27 +1608,11 @@ event::ptr primitive_inst::execute(const std::vector<event::ptr>& events) {
 
     bool use_shared_kernels = _node->get_program().get_config().get_property(ov::intel_gpu::hint::enable_kernels_reuse);
 
-    on_execute();
-
-    const bool out_of_order_queue = get_network().get_stream().get_queue_type() == QueueTypes::out_of_order;
-    const bool need_events = out_of_order_queue ||
-                            (_impl && _impl->is_cpu() && !can_be_optimized()) || (can_be_optimized() && needs_completion_event() && !is_output());
-
-    if (can_be_optimized()) {
-        if (dependencies.size() > 1) {
-            return get_network().get_stream().group_events(dependencies);
-        } else if (need_events) {
-            return get_network().get_stream().create_user_event(true);
-        } else {
-            return nullptr;
-        }
-    }
-
-    OPENVINO_ASSERT(_impl != nullptr, "[GPU] Implementation is nullptr for ", primitive_id,  " primitive");
     // Output buffer may be changed under the following conditions, so we need to set args to kernel on each iteration
     if ((is_dynamic() && need_args_update) || has_mutable_input() || is_output() || has_dynamic_dependencies_insts(this) || use_shared_kernels) {
         set_arguments();
     }
+    on_execute();
 
     if (!_node->is_type<condition>() && !_node->is_type<loop>()) {
         for (size_t i = 0; i < _outputs.size(); ++i) {
@@ -1640,13 +1630,13 @@ event::ptr primitive_inst::execute(const std::vector<event::ptr>& events) {
                     << ", "
                     << "can_be_optimized=" << can_be_optimized() << ")" << std::endl;
 
-
+    const bool out_of_order_queue = get_network().get_stream().get_queue_type() == QueueTypes::out_of_order;
     if (_exec_deps.empty() && dependencies.empty()) {
         dependencies = events;
     } else {
         // Prepare dependencies events in case of OOO queue, CPU implementation,
         // or optimized_out impl which has CPU users (needs_completion_event() && !is_output() condition)
-        if (need_events) {
+        if (out_of_order_queue || (_impl->is_cpu() && !can_be_optimized()) || (can_be_optimized() && needs_completion_event() && !is_output())) {
             dependencies.reserve(dependencies.size() + _exec_deps.size());
             for (auto& input : _exec_deps) {
                 auto& id = input->id();
@@ -1738,7 +1728,7 @@ primitive_inst::primitive_inst(network & network, program_node const& node, bool
     , _outputs({})
     , _reordered_weights_cache(network.get_weights_cache_capacity())
     , _output_changed(false)
-    , _is_dynamic(node.is_dynamic() || node.generates_dynamic_output())
+    , _is_dynamic(node.is_dynamic())
     , _type(node.type())
     , _id(node.id())
     , _org_id(node.get_org_primitive_id())
@@ -1796,13 +1786,6 @@ primitive_inst::primitive_inst(network & network, program_node const& node, bool
         }
     }
     _impls_factory = std::make_shared<ImplementationsFactory>(_node);
-    if (_impl) {
-        _impl->set_node_params(node);
-        if (_impl->is_dynamic() && !_impl->is_cpu()) {
-            const int64_t shape_elements = node.get_total_shape_info_size();
-            _shape_info_memory = _network.get_engine().allocate_memory(layout{{shape_elements}, data_types::i32, format::bfyx});
-        }
-    }
     _impl_params->strm = _network.get_stream_ptr();
     for (size_t i = 0; i < get_node().get_output_layouts().size(); ++i) {
         if (_outputs.size() > i) {
@@ -2413,7 +2396,7 @@ ImplementationsFactory::ImplementationsFactory(const program_node* node)
 std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_params(primitive_inst& inst,
                                                                                       const kernel_impl_params& params,
                                                                                       bool use_async_compilation) {
-    auto get_impl = [this](const program_node* node, const kernel_impl_params& params, shape_types shape_type) -> std::unique_ptr<primitive_impl> {
+    auto find_impl = [this](const program_node* node, const kernel_impl_params& params, shape_types shape_type) -> std::unique_ptr<primitive_impl> {
         OPENVINO_ASSERT(node != nullptr);
         for (auto& impl_manager : m_available_impls) {
             if ((impl_manager->get_shape_type() & shape_type) != shape_type)
@@ -2430,6 +2413,7 @@ std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_p
 
     const auto node = &inst.get_node();
     auto& prog = *inst.get_network().get_program();
+    auto& kernels_cache = prog.get_kernels_cache();
 
     // 1. If we have static impl in the cache - use it
     if (use_async_compilation) {
@@ -2440,7 +2424,7 @@ std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_p
 
         // 1.1. Static impl not found - run async compilation
         auto& compilation_context = prog.get_compilation_context();
-        compilation_context.push_task(params, [&inst, &compilation_context, params, get_impl]() {
+        compilation_context.push_task(params, [&inst, &compilation_context, params, find_impl]() {
             if (compilation_context.is_stopped())
                 return;
             auto& _program = *inst.get_network().get_program();
@@ -2452,7 +2436,7 @@ std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_p
                     return;
             }
 
-            std::unique_ptr<primitive_impl> impl = get_impl(&inst.get_node(), params, shape_types::static_shape);
+            std::unique_ptr<primitive_impl> impl = find_impl(&inst.get_node(), params, shape_types::static_shape);
 
             if (impl->get_kernels_source().size() > 0) {
                 auto kernels = _program.get_kernels_cache().compile(params, impl->get_kernels_source());
@@ -2473,8 +2457,11 @@ std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_p
 
     // 3. Try to create new shape agnostic impl & cache it
     if (!dynamic_impl) {
-        dynamic_impl = get_impl(node, params, shape_types::dynamic_shape);
-        if (dynamic_impl) {
+        dynamic_impl = find_impl(node, params, shape_types::dynamic_shape);
+        if (dynamic_impl && !inst.can_be_optimized()) {
+            dynamic_impl->set_node_params(*node);
+            auto kernels = kernels_cache.compile(params, dynamic_impl->get_kernels_source());
+            dynamic_impl->set_kernels(std::move(kernels));
             m_dynamic_impls_cache.push_back(dynamic_impl);
         }
     }
@@ -2486,13 +2473,15 @@ std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_p
     }
 
     // 5. Finally, if no impl found so far, we just enforce static impl compilation
-    auto static_impl = get_impl(node, params, shape_types::static_shape);
+    auto static_impl = find_impl(node, params, shape_types::static_shape);
     assert(static_impl != nullptr);
     static_impl->set_node_params(*node);
-    auto& kernels_cache = prog.get_kernels_cache();
-    auto kernels = kernels_cache.compile(params, static_impl->get_kernels_source());
-    static_impl->set_kernels(std::move(kernels));
-    m_static_impls_cache.add(params, static_impl->clone());
+    if (!inst.can_be_optimized()) {
+        auto& kernels_cache = prog.get_kernels_cache();
+        auto kernels = kernels_cache.compile(params, static_impl->get_kernels_source());
+        static_impl->set_kernels(std::move(kernels));
+        m_static_impls_cache.add(params, static_impl->clone());
+    }
 
     return static_impl;
 }
