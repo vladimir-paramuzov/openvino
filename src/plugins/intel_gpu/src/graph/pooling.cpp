@@ -268,6 +268,9 @@ std::string pooling_inst::to_string(pooling_node const& node) {
     pooling_info.add("mode", mode);
     pooling_info.add("stride", cldnn::to_string(strd));
     pooling_info.add("kernel size", cldnn::to_string(kernel_size));
+    pooling_info.add("pb", cldnn::to_string(desc->pads_begin));
+    pooling_info.add("pe", cldnn::to_string(desc->pads_end));
+    pooling_info.add("auto pad", cldnn::to_string(desc->auto_pad));
     if (desc->with_output_size) {
         json_composite ud_out_size_info;
         ud_out_size_info.add("size", desc->output_size.to_string());

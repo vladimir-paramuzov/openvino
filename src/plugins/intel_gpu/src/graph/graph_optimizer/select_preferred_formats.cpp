@@ -72,8 +72,8 @@ void select_preferred_formats::run(program& p) {
             if (n->is_type<convolution>() && n->as<convolution>().weights_zero_points_term())
                 return;
         }
+        engine.create_onednn_engine(p.get_config());
     }
-    engine.create_onednn_engine(p.get_config());
 #endif  // ENABLE_ONEDNN_FOR_GPU
 
     const auto& forcing_map = _lo.get_implementation_forcing();

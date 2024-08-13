@@ -724,7 +724,9 @@ TEST(pooling_forward_gpu, offsets_avg_bfyx_f32_wsiz3x3_wstr3x3_i1x1x3x3_zeropad)
 
     network network(engine, topology, get_test_default_config(engine));
 
-    std::vector<float> input_vec = { 1.5f, -0.5f, -1.0f, 0.5f, 0.1f, 0.2f, 0.9f, 1.1f, 2.2f };
+    std::vector<float> input_vec = { 1.5f, -0.5f, -1.0f,
+                                     0.5f, 0.1f, 0.2f,
+                                     0.9f, 1.1f, 2.2f };
     set_values(input_prim, input_vec);
 
     network.set_input_data("input_prim", input_prim);

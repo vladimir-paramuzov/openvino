@@ -31,23 +31,38 @@ struct PoolingImplementationManager : public ImplementationManager {
         auto out_dt = out_layout.data_type;
 
         static const std::vector<format::type> supported_formats = {
-            format::bfyx,
+            format::byxf,
+            format::bzyxf,
+            format::b_fs_yx_fsv8,
+            format::b_fs_zyx_fsv8,
             format::b_fs_yx_fsv16,
             format::b_fs_zyx_fsv16,
             format::b_fs_yx_fsv32,
             format::b_fs_zyx_fsv32,
+            format::bs_fs_yx_bsv4_fsv2,
+            format::bs_fs_yx_bsv4_fsv4,
+            format::bs_fs_yx_bsv8_fsv2,
+            format::bs_fs_zyx_bsv8_fsv2,
+            format::bs_fs_yx_bsv8_fsv4,
+            format::bs_fs_zyx_bsv8_fsv4,
+            format::bs_fs_yx_bsv16_fsv2,
+            format::bs_fs_zyx_bsv16_fsv2,
+            format::bs_fs_yx_bsv16_fsv4,
+            format::bs_fs_zyx_bsv16_fsv4,
+            format::bs_fs_yx_bsv16_fsv8,
+            format::bs_fs_zyx_bsv16_fsv8,
             format::bs_fs_yx_bsv16_fsv16,
-            format::bs_fs_yx_bsv16_fsv32,
-            format::bs_fs_yx_bsv32_fsv16,
-            format::bs_fs_yx_bsv32_fsv32,
             format::bs_fs_zyx_bsv16_fsv16,
+            format::bs_fs_yx_bsv16_fsv32,
             format::bs_fs_zyx_bsv16_fsv32,
+            format::bs_fs_yx_bsv32_fsv16,
             format::bs_fs_zyx_bsv32_fsv16,
+            format::bs_fs_yx_bsv32_fsv32,
             format::bs_fs_zyx_bsv32_fsv32,
         };
 
-        bool fp_case = data_type_traits::is_floating_point(in_dt) && in_dt == out_dt;
-        bool u8s8_case = one_of(in_dt, {data_types::i8, data_types::u8}) && one_of(out_dt, {data_types::i8, data_types::u8});
+        bool fp_case = data_type_traits::is_floating_point(out_dt) && in_dt == ov::element::f16;
+        bool u8s8_case = one_of(in_dt, {ov::element::i8, ov::element::u8}) && one_of(out_dt, {ov::element::i8, ov::element::u8});
 
         if (!fp_case && !u8s8_case)
             return false;

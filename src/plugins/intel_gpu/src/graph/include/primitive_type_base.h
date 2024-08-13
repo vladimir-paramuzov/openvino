@@ -5,6 +5,7 @@
 #pragma once
 
 #include "impls/registry/registry.hpp"
+#include "intel_gpu/primitives/data.hpp"
 #include "intel_gpu/runtime/layout.hpp"
 #include "intel_gpu/runtime/debug_configuration.hpp"
 
