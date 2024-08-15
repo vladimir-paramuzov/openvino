@@ -989,24 +989,7 @@ bool primitive_inst::update_impl(bool use_async_compilation) {
         }
 #endif
 
-        // Update param if fake_alignment is available
-        auto updated_params = get_fake_aligned_params_if_possible(*_impl_params);
-        // Change weights layout of `updated_params` to original one to have valid information
-        // in _impl->_weights_reorder_params about required weights format after impl selection
-        if (_node->is_type<fully_connected>() || _node->is_type<convolution>() || _node->is_type<deconvolution>()) {
-            const auto weights_idx = _node->get_primitive()->input.size();
-            const auto original_weights_memory = dep_memory_ptr(weights_idx);
-            updated_params.weights_layout = optional_layout(original_weights_memory->get_layout());
-        }
-
-        for (auto& i : updated_params.input_layouts) {
-            i.data_padding.set_dynamic_pad(tensor(0));
-        }
-        for (auto& o : updated_params.output_layouts) {
-            o.data_padding.set_dynamic_pad(tensor(0));
-        }
-
-        _impl = _impls_factory->get_primitive_impl_for_params(*this, updated_params, use_async_compilation);
+        _impl = _impls_factory->get_primitive_impl_for_params(*this, *_impl_params, use_async_compilation);
         GPU_DEBUG_TRACE_DETAIL << id() << " impl update: was: " << prev_impl_str << " now: " << _impl->get_kernel_name() << std::endl;
     }
     // impl is replaced
@@ -2415,16 +2398,33 @@ std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_p
     auto& prog = *inst.get_network().get_program();
     auto& kernels_cache = prog.get_kernels_cache();
 
+    // Update param if fake_alignment is available
+    auto updated_params = inst.get_fake_aligned_params_if_possible(params);
+    // Change weights layout of `updated_params` to original one to have valid information
+    // in _impl->_weights_reorder_params about required weights format after impl selection
+    if (inst.get_node().is_type<fully_connected>() || inst.get_node().is_type<convolution>() || inst.get_node().is_type<deconvolution>()) {
+        const auto weights_idx = inst.get_node().get_primitive()->input.size();
+        const auto original_weights_memory = inst.dep_memory_ptr(weights_idx);
+        updated_params.weights_layout = optional_layout(original_weights_memory->get_layout());
+    }
+
+    for (auto& i : updated_params.input_layouts) {
+        i.data_padding.set_dynamic_pad(tensor(0));
+    }
+    for (auto& o : updated_params.output_layouts) {
+        o.data_padding.set_dynamic_pad(tensor(0));
+    }
+
     // 1. If we have static impl in the cache - use it
     if (use_async_compilation) {
-        auto cached_impl = m_static_impls_cache.get(params);
+        auto cached_impl = m_static_impls_cache.get(updated_params);
         if (cached_impl) {
             return cached_impl->clone();
         }
 
         // 1.1. Static impl not found - run async compilation
         auto& compilation_context = prog.get_compilation_context();
-        compilation_context.push_task(params, [&inst, &compilation_context, params, find_impl]() {
+        compilation_context.push_task(updated_params, [&inst, &compilation_context, updated_params, find_impl]() {
             if (compilation_context.is_stopped())
                 return;
             auto& _program = *inst.get_network().get_program();
@@ -2432,17 +2432,17 @@ std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_p
             {
                 // Check existense in the cache one more time as several iterations of model execution could happens and multiple compilation
                 // tasks created for same shapes
-                if (cache.has(params))
+                if (cache.has(updated_params))
                     return;
             }
 
-            std::unique_ptr<primitive_impl> impl = find_impl(&inst.get_node(), params, shape_types::static_shape);
+            std::unique_ptr<primitive_impl> impl = find_impl(&inst.get_node(), updated_params, shape_types::static_shape);
 
             if (impl->get_kernels_source().size() > 0) {
-                auto kernels = _program.get_kernels_cache().compile(params, impl->get_kernels_source());
+                auto kernels = _program.get_kernels_cache().compile(updated_params, impl->get_kernels_source());
                 impl->set_kernels(kernels);
             }
-            cache.add(params, impl->clone());
+            cache.add(updated_params, impl->clone());
         });
     }
 
@@ -2473,14 +2473,14 @@ std::shared_ptr<primitive_impl> ImplementationsFactory::get_primitive_impl_for_p
     }
 
     // 5. Finally, if no impl found so far, we just enforce static impl compilation
-    auto static_impl = find_impl(node, params, shape_types::static_shape);
+    auto static_impl = find_impl(node, updated_params, shape_types::static_shape);
     assert(static_impl != nullptr);
     static_impl->set_node_params(*node);
     if (!inst.can_be_optimized()) {
         auto& kernels_cache = prog.get_kernels_cache();
-        auto kernels = kernels_cache.compile(params, static_impl->get_kernels_source());
+        auto kernels = kernels_cache.compile(updated_params, static_impl->get_kernels_source());
         static_impl->set_kernels(std::move(kernels));
-        m_static_impls_cache.add(params, static_impl->clone());
+        m_static_impls_cache.add(updated_params, static_impl->clone());
     }
 
     return static_impl;

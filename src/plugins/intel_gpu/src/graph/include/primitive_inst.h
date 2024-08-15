@@ -317,6 +317,7 @@ public:
 
     virtual int32_t get_prealloc_iter_num() { return -1; }
     virtual void update_shape_info_tensor(const kernel_impl_params& params);
+    kernel_impl_params get_fake_aligned_params_if_possible(kernel_impl_params const& orig_impl_param);
 
 protected:
     primitive_inst(network& network, program_node const& node, bool allocate_memory);
@@ -465,7 +466,6 @@ protected:
         }
         return false;
     }
-    kernel_impl_params get_fake_aligned_params_if_possible(kernel_impl_params const& orig_impl_param);
 
     // This could be implemented via single map std::unordered_map<instrumentation::perf_counter_key, std::tuple<int64_t, size_t>>
     // but the overhead on using perf_counter_key as map key is too big, thus we use hash as map key
