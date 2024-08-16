@@ -350,12 +350,12 @@ public:
 };
 
 std::unique_ptr<primitive_impl> ConvolutionImplementationManager::create_impl(const program_node& node, const kernel_impl_params& params) const {
-    OPENVINO_ASSERT(node.is_type<convolution>());
+    assert(node.is_type<convolution>());
     return convolution_onednn::create(static_cast<const convolution_node&>(node), params);
 }
 
 in_out_fmts_t ConvolutionImplementationManager::query_formats(const program_node& node) const {
-    OPENVINO_ASSERT(node.is_type<convolution>());
+    assert(node.is_type<convolution>());
     std::vector<format::type> in_fmts(node.get_dependencies().size(), format::any);
     std::vector<format::type> out_fmts(node.get_outputs_count(), format::any);
 

@@ -158,7 +158,7 @@ public:
 };
 
 std::unique_ptr<primitive_impl> ReduceImplementationManager::create_impl(const program_node& node, const kernel_impl_params& params) const {
-    OPENVINO_ASSERT(node.is_type<reduce>());
+    assert(node.is_type<reduce>());
     return onednn::reduction_onednn::create(static_cast<const reduce_node&>(node), params);
 }
 

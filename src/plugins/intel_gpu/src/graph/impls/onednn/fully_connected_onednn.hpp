@@ -18,8 +18,8 @@ struct FullyConnectedImplementationManager : public ImplementationManager {
     FullyConnectedImplementationManager(shape_types shape_type) : ImplementationManager(impl_types::onednn, shape_type) {}
     std::unique_ptr<primitive_impl> create_impl(const program_node& node, const kernel_impl_params& params) const override;
 
-    bool validate(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<fully_connected>());
+    bool validate_impl(const program_node& node) const override {
+        assert(node.is_type<fully_connected>());
         const auto& info = node.get_program().get_engine().get_device_info();
         if (!info.supports_immad)
             return false;
@@ -73,11 +73,11 @@ struct FullyConnectedImplementationManager : public ImplementationManager {
             }
         }
 
-        return ImplementationManager::validate(node);
+        return true;
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<fully_connected>());
+        assert(node.is_type<fully_connected>());
         std::vector<format::type> in_fmts(node.get_dependencies().size(), format::any);
         std::vector<format::type> out_fmts(node.get_outputs_count(), format::any);
 
@@ -93,10 +93,6 @@ struct FullyConnectedImplementationManager : public ImplementationManager {
         out_fmts[0] = format::get_default_format(out_rank);
 
         return {in_fmts, out_fmts};
-    }
-
-    bool support_shapes(const kernel_impl_params& params) const override {
-        return true;
     }
 };
 

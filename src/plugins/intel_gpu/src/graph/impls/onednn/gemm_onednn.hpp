@@ -16,8 +16,8 @@ struct GemmImplementationManager : public ImplementationManager {
     GemmImplementationManager(shape_types shape_type) : ImplementationManager(impl_types::onednn, shape_type) {}
     std::unique_ptr<primitive_impl> create_impl(const program_node& node, const kernel_impl_params& params) const override;
 
-    bool validate(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<gemm>());
+    bool validate_impl(const program_node& node) const override {
+        assert(node.is_type<gemm>());
         const auto& info = node.get_program().get_engine().get_device_info();
         if (!info.supports_immad)
             return false;
@@ -64,11 +64,11 @@ struct GemmImplementationManager : public ImplementationManager {
         if (gemm_node.get_primitive()->indirect_a || gemm_node.get_primitive()->indirect_b)
             return false;
 
-        return ImplementationManager::validate(node);
+        return true;
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<gemm>());
+        assert(node.is_type<gemm>());
         std::vector<format::type> in_fmts(node.get_dependencies().size(), format::any);
         std::vector<format::type> out_fmts(node.get_outputs_count(), format::any);
 
@@ -87,10 +87,6 @@ struct GemmImplementationManager : public ImplementationManager {
         }
 
         return {in_fmts, out_fmts};
-    }
-
-    bool support_shapes(const kernel_impl_params& params) const override {
-        return true;
     }
 };
 

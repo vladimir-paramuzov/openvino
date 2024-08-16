@@ -414,7 +414,7 @@ public:
 };
 
 std::unique_ptr<primitive_impl> FullyConnectedImplementationManager::create_impl(const program_node& node, const kernel_impl_params& params) const {
-    OPENVINO_ASSERT(node.is_type<fully_connected>());
+    assert(node.is_type<fully_connected>());
     return onednn::fully_connected_onednn::create(static_cast<const fully_connected_node&>(node), params);
 }
 

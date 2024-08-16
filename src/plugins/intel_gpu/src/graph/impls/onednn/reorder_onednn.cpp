@@ -149,7 +149,7 @@ public:
 };
 
 std::unique_ptr<primitive_impl> ReorderImplementationManager::create_impl(const program_node& node, const kernel_impl_params& params) const {
-    OPENVINO_ASSERT(node.is_type<reorder>());
+    assert(node.is_type<reorder>());
     return onednn::reorder_onednn::create(static_cast<const reorder_node&>(node), params);
 }
 

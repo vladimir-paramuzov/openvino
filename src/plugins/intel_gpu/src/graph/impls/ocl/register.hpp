@@ -64,7 +64,6 @@
 #include "intel_gpu/primitives/shape_of.hpp"
 #include "intel_gpu/primitives/shuffle_channels.hpp"
 #include "intel_gpu/primitives/slice.hpp"
-#include "intel_gpu/primitives/softmax.hpp"
 #include "intel_gpu/primitives/space_to_batch.hpp"
 #include "intel_gpu/primitives/strided_slice.hpp"
 #include "intel_gpu/primitives/swiglu.hpp"
@@ -152,7 +151,6 @@ REGISTER_OCL(select);
 REGISTER_OCL(shape_of);
 REGISTER_OCL(shuffle_channels);
 REGISTER_OCL(slice);
-REGISTER_OCL(softmax);
 REGISTER_OCL(space_to_batch);
 REGISTER_OCL(space_to_depth);
 REGISTER_OCL(strided_slice);

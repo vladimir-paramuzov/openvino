@@ -16,8 +16,8 @@ struct ConvolutionImplementationManager : public ImplementationManager {
 
     std::unique_ptr<primitive_impl> create_impl(const program_node& node, const kernel_impl_params& params) const override;
 
-    bool validate(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<convolution>());
+    bool validate_impl(const program_node& node) const override {
+        assert(node.is_type<convolution>());
 
         const auto& input_layout = node.get_input_layout(0);
         const auto& weights_layout = node.as<convolution>().weights().get_output_layout();
@@ -95,11 +95,8 @@ struct ConvolutionImplementationManager : public ImplementationManager {
                 return false;
         }
 
-        return ImplementationManager::validate(node);
+        return true;
     }
-
-    in_out_fmts_t query_formats(const program_node&) const override { OPENVINO_NOT_IMPLEMENTED; }
-    bool support_shapes(const kernel_impl_params&) const override { return true; }
 };
 
 }  // namespace ocl

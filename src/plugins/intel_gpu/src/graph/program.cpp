@@ -3,6 +3,7 @@
 //
 
 #include "impls/registry/implementation_manager.hpp"
+#include "intel_gpu/runtime/internal_properties.hpp"
 #include "openvino/core/type.hpp"
 #include "openvino/runtime/system_conf.hpp"
 #include "openvino/runtime/threading/cpu_streams_info.hpp"
@@ -864,6 +865,10 @@ void program::add_intermediate(program_node& node,
         node.constant = prev.constant;
         node.data_flow = prev.data_flow;
     }
+    if (node.get_program().get_config().get_property(ov::intel_gpu::allow_new_shape_infer))
+        node.recalc_output_layouts(false);
+    else
+        node.recalc_output_layout(false);
 }
 
 void program::add_intermediate(std::shared_ptr<primitive> prim,

@@ -97,7 +97,7 @@ struct SomeImplementationManager : public ImplementationManager {
         return some_impl::create(node, params);
     }
 
-    bool validate(const program_node& node) const override {
+    bool validate_impl(const program_node& node) const override {
         OPENVINO_ASSERT(node.is_type<some_primitive>());
         auto p = node.as<some_primitive>().get_primitive()->param;
 

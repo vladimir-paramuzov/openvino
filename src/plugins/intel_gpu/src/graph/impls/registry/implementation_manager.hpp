@@ -40,19 +40,25 @@ struct implementation_key {
 using ValidateFunc = std::function<bool(const program_node& node)>;
 struct ImplementationManager {
 public:
-    virtual const ov::DiscreteTypeInfo& get_type_info() const = 0;
     std::unique_ptr<primitive_impl> create(const program_node& node, const kernel_impl_params& params) const;
     std::unique_ptr<primitive_impl> create(const kernel_impl_params& params) const;
-    virtual std::unique_ptr<primitive_impl> create_impl(const program_node& node, const kernel_impl_params& params) const = 0;
-    virtual std::unique_ptr<primitive_impl> create_impl(const kernel_impl_params& params) const { OPENVINO_NOT_IMPLEMENTED; }
-    virtual bool validate(const program_node& node) const {
+    bool validate(const program_node& node) const {
+        if (!validate_impl(node))
+            return false;
         if (m_vf) {
             return m_vf(node);
         }
+
         return true;
     }
-    virtual bool support_shapes(const kernel_impl_params& param) const = 0;
-    virtual in_out_fmts_t query_formats(const program_node& node) const = 0;
+
+    virtual const ov::DiscreteTypeInfo& get_type_info() const = 0;
+    virtual std::unique_ptr<primitive_impl> create_impl(const program_node& node, const kernel_impl_params& params) const = 0;
+    virtual std::unique_ptr<primitive_impl> create_impl(const kernel_impl_params& params) const { OPENVINO_NOT_IMPLEMENTED; }
+    virtual bool validate_impl(const program_node& node) const { return true; }
+    virtual bool support_shapes(const kernel_impl_params& param) const { return true; }
+    virtual in_out_fmts_t query_formats(const program_node& node) const { OPENVINO_NOT_IMPLEMENTED; }
+
     ImplementationManager(impl_types impl_type, shape_types shape_type, ValidateFunc vf = [](const program_node&) { return true; })
         : m_impl_type(impl_type)
         , m_shape_type(shape_type)
@@ -85,10 +91,8 @@ struct ImplementationManagerLegacy : public ImplementationManager {
 
         OPENVINO_NOT_IMPLEMENTED;
     }
-    bool validate(const program_node& node) const override {
-        if (!ImplementationManager::is_supported(node, m_keys, m_shape_type))
-            return false;
-        return ImplementationManager::validate(node);
+    bool validate_impl(const program_node& node) const override {
+        return ImplementationManager::is_supported(node, m_keys, m_shape_type);
     }
 
     bool support_shapes(const kernel_impl_params& params) const override {

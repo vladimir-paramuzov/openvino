@@ -160,7 +160,7 @@ public:
 };
 
 std::unique_ptr<primitive_impl> PoolingImplementationManager::create_impl(const program_node& node, const kernel_impl_params& params) const {
-    OPENVINO_ASSERT(node.is_type<pooling>());
+    assert(node.is_type<pooling>());
     return onednn::pooling_onednn::create(static_cast<const pooling_node&>(node), params);
 }
 

@@ -127,7 +127,7 @@ public:
 };
 
 std::unique_ptr<primitive_impl> ConcatenationImplementationManager::create_impl(const program_node& node, const kernel_impl_params& params) const {
-    OPENVINO_ASSERT(node.is_type<concatenation>());
+    assert(node.is_type<concatenation>());
     return onednn::concatenation_onednn::create(static_cast<const concatenation_node&>(node), params);
 }
 

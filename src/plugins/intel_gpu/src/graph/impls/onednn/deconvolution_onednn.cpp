@@ -214,12 +214,12 @@ public:
 };
 
 std::unique_ptr<primitive_impl> DeconvolutionImplementationManager::create_impl(const program_node& node, const kernel_impl_params& params) const {
-    OPENVINO_ASSERT(node.is_type<deconvolution>());
+    assert(node.is_type<deconvolution>());
     return onednn::deconvolution_onednn::create(static_cast<const deconvolution_node&>(node), params);
 }
 
 in_out_fmts_t DeconvolutionImplementationManager::query_formats(const program_node& node) const {
-    OPENVINO_ASSERT(node.is_type<deconvolution>());
+    assert(node.is_type<deconvolution>());
     std::vector<format::type> in_fmts(node.get_dependencies().size(), format::any);
     std::vector<format::type> out_fmts(node.get_outputs_count(), format::any);
 

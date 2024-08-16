@@ -42,8 +42,8 @@ struct ReduceImplementationManager : public ImplementationManager {
     ReduceImplementationManager(shape_types shape_type) : ImplementationManager(impl_types::onednn, shape_type) {}
     std::unique_ptr<primitive_impl> create_impl(const program_node& node, const kernel_impl_params& params) const override;
 
-    bool validate(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<reduce>());
+    bool validate_impl(const program_node& node) const override {
+        assert(node.is_type<reduce>());
         const auto& info = node.get_program().get_engine().get_device_info();
         if (!info.supports_immad)
             return false;
@@ -112,14 +112,6 @@ struct ReduceImplementationManager : public ImplementationManager {
         if (reduce_prim->keep_dims == false && is_reduce_blocked_axes(node))
             return false;
 
-        return ImplementationManager::validate(node);
-    }
-
-    in_out_fmts_t query_formats(const program_node& node) const override {
-        OPENVINO_NOT_IMPLEMENTED;
-    }
-
-    bool support_shapes(const kernel_impl_params& params) const override {
         return true;
     }
 };

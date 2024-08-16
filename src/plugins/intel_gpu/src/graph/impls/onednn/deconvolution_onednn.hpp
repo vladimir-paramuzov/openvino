@@ -17,8 +17,8 @@ struct DeconvolutionImplementationManager : public ImplementationManager {
     DeconvolutionImplementationManager(shape_types shape_type) : ImplementationManager(impl_types::onednn, shape_type) {}
     std::unique_ptr<primitive_impl> create_impl(const program_node& node, const kernel_impl_params& params) const override;
 
-    bool validate(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<deconvolution>());
+    bool validate_impl(const program_node& node) const override {
+        assert(node.is_type<deconvolution>());
         const auto& info = node.get_program().get_engine().get_device_info();
         if (!info.supports_immad)
             return false;
@@ -69,14 +69,10 @@ struct DeconvolutionImplementationManager : public ImplementationManager {
         if (!is_supported_post_ops(deconv_node))
             return false;
 
-        return ImplementationManager::validate(node);
+        return true;
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override;
-
-    bool support_shapes(const kernel_impl_params& params) const override {
-        return true;
-    }
 };
 
 }  // namespace onednn

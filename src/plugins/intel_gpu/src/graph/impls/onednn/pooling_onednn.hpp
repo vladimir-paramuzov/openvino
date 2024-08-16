@@ -16,8 +16,8 @@ struct PoolingImplementationManager : public ImplementationManager {
     PoolingImplementationManager(shape_types shape_type) : ImplementationManager(impl_types::onednn, shape_type) {}
     std::unique_ptr<primitive_impl> create_impl(const program_node& node, const kernel_impl_params& params) const override;
 
-    bool validate(const program_node& node) const override {
-        OPENVINO_ASSERT(node.is_type<pooling>());
+    bool validate_impl(const program_node& node) const override {
+        assert(node.is_type<pooling>());
         const auto& info = node.get_program().get_engine().get_device_info();
         if (!info.supports_immad)
             return false;
@@ -73,14 +73,6 @@ struct PoolingImplementationManager : public ImplementationManager {
         if (!is_supported_post_ops(node))
             return false;
 
-        return ImplementationManager::validate(node);
-    }
-
-    in_out_fmts_t query_formats(const program_node& node) const override {
-        OPENVINO_NOT_IMPLEMENTED;
-    }
-
-    bool support_shapes(const kernel_impl_params& params) const override {
         return true;
     }
 };
