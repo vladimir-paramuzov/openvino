@@ -85,13 +85,13 @@ struct ConvolutionImplementationManager : public ImplementationManager {
                 format::bs_fs_yx_bsv4_fsv2,
             };
 
-            bool fp_case = data_type_traits::is_floating_point(in_dt) &&
+            bool fp_common_case = data_type_traits::is_floating_point(in_dt) &&
                            (one_of(input_fmt.value, supported_fp_only_formats) || one_of(input_fmt.value, supported_common_formats));
-            bool fp16_case = in_dt == ov::element::f16 && input_fmt == format::fs_b_yx_fsv32;
+            bool fp16_case = everyone_is(ov::element::f16, in_dt, wei_dt) && (input_fmt == format::fs_b_yx_fsv32 || output_fmt == format::fs_b_yx_fsv32);
             bool i8u8_case = data_type_traits::is_i8_u8(in_dt) &&
                              (one_of(input_fmt.value, supported_int_only_formats) || one_of(input_fmt.value, supported_common_formats));
 
-            if (!fp_case && !fp16_case && !i8u8_case)
+            if (!fp_common_case && !fp16_case && !i8u8_case)
                 return false;
         }
 

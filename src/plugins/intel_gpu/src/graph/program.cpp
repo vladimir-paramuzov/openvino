@@ -55,6 +55,7 @@
 #include "border_inst.h"
 #include "primitive_inst.h"
 #include "prior_box_inst.h"
+#include "scatter_elements_update_inst.h"
 #include "proposal_inst.h"
 #include "reorder_inst.h"
 #include "mvn_inst.h"
@@ -865,10 +866,8 @@ void program::add_intermediate(program_node& node,
         node.constant = prev.constant;
         node.data_flow = prev.data_flow;
     }
-    if (node.get_program().get_config().get_property(ov::intel_gpu::allow_new_shape_infer))
-        node.recalc_output_layouts(false);
-    else
-        node.recalc_output_layout(false);
+
+    node.get_output_layouts(false);
 }
 
 void program::add_intermediate(std::shared_ptr<primitive> prim,

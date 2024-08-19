@@ -29,7 +29,6 @@
 #include "intel_gpu/primitives/fully_connected.hpp"
 #include "intel_gpu/primitives/gather.hpp"
 #include "intel_gpu/primitives/gather_elements.hpp"
-#include "intel_gpu/primitives/gather_nd.hpp"
 #include "intel_gpu/primitives/gather_tree.hpp"
 #include "intel_gpu/primitives/gemm.hpp"
 #include "intel_gpu/primitives/grid_sample.hpp"
@@ -57,9 +56,7 @@
 #include "intel_gpu/primitives/roi_align.hpp"
 #include "intel_gpu/primitives/roi_pooling.hpp"
 #include "intel_gpu/primitives/roll.hpp"
-#include "intel_gpu/primitives/scatter_elements_update.hpp"
 #include "intel_gpu/primitives/scatter_nd_update.hpp"
-#include "intel_gpu/primitives/scatter_update.hpp"
 #include "intel_gpu/primitives/select.hpp"
 #include "intel_gpu/primitives/shape_of.hpp"
 #include "intel_gpu/primitives/shuffle_channels.hpp"
@@ -111,7 +108,6 @@ REGISTER_OCL(eltwise);
 REGISTER_OCL(embed);
 REGISTER_OCL(fully_connected);
 REGISTER_OCL(gather);
-REGISTER_OCL(gather_nd);
 REGISTER_OCL(gather_elements);
 REGISTER_OCL(gemm);
 REGISTER_OCL(generate_proposals);
@@ -144,8 +140,6 @@ REGISTER_OCL(rms);
 REGISTER_OCL(roi_align);
 REGISTER_OCL(roi_pooling);
 REGISTER_OCL(roll);
-REGISTER_OCL(scatter_update);
-REGISTER_OCL(scatter_elements_update);
 REGISTER_OCL(scatter_nd_update);
 REGISTER_OCL(select);
 REGISTER_OCL(shape_of);

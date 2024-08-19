@@ -105,7 +105,7 @@ struct SomeImplementationManager : public ImplementationManager {
                        some_primitive::SomeParameter::SUPPORTED_VALUE_ONEDNN_1,
                        some_primitive::SomeParameter::SUPPORTED_VALUE_ONEDNN_2))
             return false;
-        return ImplementationManager::validate(node);
+        return true;
     }
 
     in_out_fmts_t query_formats(const program_node& node) const override {

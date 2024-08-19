@@ -7,6 +7,7 @@
 #include "implementation_map.hpp"
 #include "intel_gpu/primitives/arg_max_min.hpp"
 #include "intel_gpu/primitives/dynamic_quantize.hpp"
+#include "intel_gpu/primitives/scatter_elements_update.hpp"
 
 #define OV_GPU_WITH_ONEDNN ENABLE_ONEDNN_FOR_GPU
 #define OV_GPU_WITH_OCL 1
@@ -116,6 +117,9 @@ REGISTER_IMPLS(reduce);
 REGISTER_IMPLS(reorder);
 REGISTER_IMPLS(reshape);
 REGISTER_IMPLS(softmax);
+REGISTER_IMPLS(gather_nd);
+REGISTER_IMPLS(scatter_update);
+REGISTER_IMPLS(scatter_elements_update);
 
 REGISTER_DEFAULT_IMPLS(assign, CPU_S, CPU_D);
 REGISTER_DEFAULT_IMPLS(read_value, CPU_S, CPU_D);
@@ -144,7 +148,6 @@ REGISTER_DEFAULT_IMPLS(experimental_detectron_roi_feature_extractor, OCL_S);
 REGISTER_DEFAULT_IMPLS(experimental_detectron_topk_rois, OCL_S);
 REGISTER_DEFAULT_IMPLS(eltwise, OCL_S, OCL_D, CPU_S, CPU_D);
 REGISTER_DEFAULT_IMPLS(gather, OCL_S, OCL_D, CPU_S, CPU_D);
-REGISTER_DEFAULT_IMPLS(gather_nd, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(gather_elements, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(generate_proposals, OCL_S);
 REGISTER_DEFAULT_IMPLS(grid_sample, OCL_S);
@@ -173,8 +176,6 @@ REGISTER_DEFAULT_IMPLS(rms, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(roi_align, OCL_S);
 REGISTER_DEFAULT_IMPLS(roi_pooling, OCL_S);
 REGISTER_DEFAULT_IMPLS(roll, OCL_S);
-REGISTER_DEFAULT_IMPLS(scatter_update, OCL_S, OCL_D, CPU_S, CPU_D);
-REGISTER_DEFAULT_IMPLS(scatter_elements_update, OCL_S);
 REGISTER_DEFAULT_IMPLS(scatter_nd_update, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(select, OCL_S, OCL_D, CPU_S, CPU_D);
 REGISTER_DEFAULT_IMPLS(shape_of, OCL_S, OCL_D, CPU_S, CPU_D);

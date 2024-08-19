@@ -65,12 +65,17 @@ bool add_required_reorders::test_format(cldnn::program_node& node, format reques
         const auto& dep_with_port = node.get_dependency_with_port(i);
         auto& dep = dep_with_port.first;
 
+        auto current_format = dep->get_output_layout(false, dep_with_port.second).format;
+
+        if (format::is_weights_format(current_format))
+            continue;
+
         if (dep->is_type<reorder>()) {
             auto& port = dep_with_port.second;
             auto new_layout = dep->get_output_layout(false, port);
             new_layout.format = requested_format;
             dep->set_output_layout(new_layout, false, port);
-        } else {
+        } else if (current_format != requested_format) {
             add_reorder(node.get_program(), dep_with_port.first, &node, true);
         }
     }
@@ -87,6 +92,10 @@ void add_required_reorders::run(program& p) {
             continue;  // only nodes with dependencies
         if (usr->is_type<data>())
             continue;
+
+        if (!usr->is_all_valid_output_layouts()) {
+            usr->get_output_layouts(false);
+        }
 
         // If usr is assign and input and output data types are different
         // add reorder with usr's output data type between dep and usr

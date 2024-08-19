@@ -33,7 +33,6 @@ void register_implementations() {
     REGISTER_OCL(fully_connected);
     REGISTER_OCL(gather);
     REGISTER_OCL(gather_elements);
-    REGISTER_OCL(gather_nd);
     REGISTER_OCL(gemm);
     REGISTER_OCL(generate_proposals);
     REGISTER_OCL(grid_sample);
@@ -65,9 +64,7 @@ void register_implementations() {
     REGISTER_OCL(roi_align);
     REGISTER_OCL(roi_pooling);
     REGISTER_OCL(roll);
-    REGISTER_OCL(scatter_update);
     REGISTER_OCL(scatter_nd_update);
-    REGISTER_OCL(scatter_elements_update);
     REGISTER_OCL(select);
     REGISTER_OCL(shape_of);
     REGISTER_OCL(shuffle_channels);
