@@ -9,7 +9,6 @@
 #include "intel_gpu/runtime/memory.hpp"
 #include "intel_gpu/runtime/file_util.hpp"
 #include "to_string_utils.h"
-#include "register.hpp"
 #include "utils.hpp"
 #include "runtime/ocl/ocl_event.hpp"
 
@@ -58,23 +57,10 @@ protected:
             return;
     }
 
-    void update_dispatch_data(const kernel_impl_params& impl_params) override {}
-
     void set_arguments_impl(typed_primitive_inst<PType>& instance, kernel_arguments_data& args) override {
         if (instance.can_be_optimized()) {
             return;
         }
-    }
-
-    event::ptr execute_impl(const std::vector<event::ptr>& /* events */,
-                            typed_primitive_inst<PType>& instance) override {
-        auto& network = instance.get_network();
-        auto& stream = network.get_stream();
-        auto net_id = network.get_id();
-        event::ptr event;
-
-
-        return event;
     }
 
     static event::ptr to_ocl_event(stream& stream, ::sycl::event e) {

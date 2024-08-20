@@ -332,7 +332,7 @@ INSTANTIATE_TEST_SUITE_P(smoke_MatMulCompressedWeights_basic,
                          MatmulWeightsDecompression::get_test_case_name);
 
 const std::vector<ShapeParams> input_shapes_corner_cases_basic = {
-    {{{-1, -1, -1}, {{1, 4, 16}}}, {1, 16, 32}},
+    {{{-1, -1, -1}, {{1, 4, 16}, {1, 1, 16}}}, {1, 16, 32}},
     {{{-1, -1, -1}, {{1, 4, 16}}}, {16, 32}},
     {{{-1, -1, 16}, {{1, 4, 16}}}, {16, 32}, 4},
     {{{-1, 16}, {{4, 16}}}, {16, 32}, 4},

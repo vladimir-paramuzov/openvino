@@ -9,6 +9,7 @@
 #include "intel_gpu/primitives/dynamic_quantize.hpp"
 #include "intel_gpu/primitives/scatter_elements_update.hpp"
 
+#define OV_GPU_WITH_SYCL ENABLE_SYCL
 #define OV_GPU_WITH_ONEDNN ENABLE_ONEDNN_FOR_GPU
 #define OV_GPU_WITH_OCL 1
 #define OV_GPU_WITH_COMMON 1
@@ -48,6 +49,12 @@
 #    define OV_GPU_CREATE_INSTANCE_OCL(...) CREATE_INSTANCE(__VA_ARGS__)
 #else
 #    define OV_GPU_CREATE_INSTANCE_OCL(...)
+#endif
+
+#if defined(OV_GPU_WITH_SYCL)
+#    define OV_GPU_CREATE_INSTANCE_SYCL(...) CREATE_INSTANCE(__VA_ARGS__)
+#else
+#    define OV_GPU_CREATE_INSTANCE_SYCL(...)
 #endif
 
 #if defined(OV_GPU_WITH_OCL)

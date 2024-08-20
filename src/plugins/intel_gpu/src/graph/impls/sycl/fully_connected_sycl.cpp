@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 
+#include "fully_connected_sycl.hpp"
 #include "fully_connected_inst.h"
 #include "intel_gpu/primitives/reorder.hpp"
 #include "ocl/ocl_event.hpp"
@@ -9,7 +10,6 @@
 #include "ocl/sycl_stream.hpp"
 #include "openvino/core/type/element_type.hpp"
 #include "primitive_sycl_base.h"
-#include "implementation_map.hpp"
 
 #include "impls/ocl/kernel_selector_helper.h"
 
@@ -459,22 +459,11 @@ struct fully_connected_sycl : typed_primitive_sycl_impl<fully_connected> {
     }
 };
 
-namespace detail {
-
-attach_fully_connected_sycl::attach_fully_connected_sycl() {
-    std::vector<data_types> dt = {
-        data_types::f32,
-        data_types::f16,
-        data_types::u8,
-        data_types::i8,
-    };
-    std::vector<format::type> fmt = {
-        format::bfyx,
-    };
-    implementation_map<fully_connected>::add(impl_types::sycl, shape_types::dynamic_shape, fully_connected_sycl::create, dt, fmt);
-    implementation_map<fully_connected>::add(impl_types::sycl, shape_types::static_shape, fully_connected_sycl::create, dt, fmt);
+std::unique_ptr<primitive_impl> FullyConnectedImplementationManager::create_impl(const program_node& node, const kernel_impl_params& params) const {
+    assert(node.is_type<fully_connected>());
+    std::cerr << "CREATE SYCL FC impl!\n";
+    return sycl::fully_connected_sycl::create(static_cast<const fully_connected_node&>(node), params);
 }
 
-}  // namespace detail
 }  // namespace sycl
 }  // namespace cldnn

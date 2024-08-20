@@ -77,7 +77,6 @@
 #include "impls/ocl/register.hpp"
 #include "impls/cpu/register.hpp"
 #include "impls/common/register.hpp"
-#include "impls/sycl/register.hpp"
 
 #include "kernel_base.h"
 
@@ -257,7 +256,6 @@ void program::init_primitives() {
         common::register_implementations();
         ocl::register_implementations();
         cpu::register_implementations();
-        sycl::register_implementations();
         is_initialized = true;
     }
 }
