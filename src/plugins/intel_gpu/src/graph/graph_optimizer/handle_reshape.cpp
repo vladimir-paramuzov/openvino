@@ -165,6 +165,7 @@ void handle_reshape::run(program& p) {
                         auto& new_reshape_node = p.get_or_create(new_reshape);
                         user->replace_dependency(0, input_node);
                         p.add_intermediate(new_reshape_node, *user, 0);
+                        new_reshape_node.recalc_output_layouts();
                         if (new_reshape->input_size() == 2) {
                             p.add_connection(prim_node.get_dependency(1), new_reshape_node);
                         }
@@ -198,6 +199,7 @@ void handle_reshape::run(program& p) {
                                        reshape_input_node.get_dependencies().empty());
                     reshape_reorder_id++;
                     reshape_input_node.recalc_output_layout();
+                    node->recalc_output_layouts();
                 }
             }
 
@@ -223,6 +225,7 @@ void handle_reshape::run(program& p) {
                     auto& reshape_input_node = p.get_or_create(reshape_input);
                     p.add_intermediate(reshape_input_node, *node, 0, reshape_input_node.get_dependencies().empty());
                     reshape_input_node.recalc_output_layout();
+                    node->recalc_output_layouts();
                 }
 
                 // Check whether output reorder is required for format change

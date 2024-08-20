@@ -866,8 +866,6 @@ void program::add_intermediate(program_node& node,
         node.constant = prev.constant;
         node.data_flow = prev.data_flow;
     }
-
-    node.get_output_layouts(false);
 }
 
 void program::add_intermediate(std::shared_ptr<primitive> prim,

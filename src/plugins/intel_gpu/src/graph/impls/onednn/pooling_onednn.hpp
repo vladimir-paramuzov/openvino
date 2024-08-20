@@ -22,9 +22,6 @@ struct PoolingImplementationManager : public ImplementationManager {
         if (!info.supports_immad)
             return false;
 
-        if (!is_supported_format(node.get_preferred_input_fmt(0)))
-            return false;
-
         const auto& in_layout = node.get_input_layout(0);
         const auto& out_layout = node.get_output_layout(0);
         auto in_dt = in_layout.data_type;

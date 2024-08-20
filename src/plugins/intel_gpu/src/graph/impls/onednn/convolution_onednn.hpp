@@ -28,12 +28,58 @@ struct ConvolutionImplementationManager : public ImplementationManager {
             return false;
 
         const auto& conv_node = node.as<convolution>();
-        if (!is_supported_format(node.get_preferred_input_fmt(0)))
+
+        const auto& in_layout = conv_node.get_input_layout(0);
+        const auto& out_layout = conv_node.get_output_layout(0);
+        const auto& wei_layout = conv_node.weights().get_output_layout(false);
+
+        auto in_fmt = in_layout.format;
+        auto out_fmt = out_layout.format;
+
+        auto in_dt = in_layout.data_type;
+        auto wei_dt = wei_layout.data_type;
+        auto out_dt = out_layout.data_type;
+
+        static const std::vector<format> supported_formats = {
+            format::byxf,
+            format::bzyxf,
+            format::b_fs_yx_fsv8,
+            format::b_fs_zyx_fsv8,
+            format::b_fs_yx_fsv16,
+            format::b_fs_zyx_fsv16,
+            format::b_fs_yx_fsv32,
+            format::b_fs_zyx_fsv32,
+            format::bs_fs_yx_bsv4_fsv2,
+            format::bs_fs_yx_bsv4_fsv4,
+            format::bs_fs_yx_bsv8_fsv2,
+            format::bs_fs_zyx_bsv8_fsv2,
+            format::bs_fs_yx_bsv8_fsv4,
+            format::bs_fs_zyx_bsv8_fsv4,
+            format::bs_fs_yx_bsv16_fsv2,
+            format::bs_fs_zyx_bsv16_fsv2,
+            format::bs_fs_yx_bsv16_fsv4,
+            format::bs_fs_zyx_bsv16_fsv4,
+            format::bs_fs_yx_bsv16_fsv8,
+            format::bs_fs_zyx_bsv16_fsv8,
+            format::bs_fs_yx_bsv16_fsv16,
+            format::bs_fs_zyx_bsv16_fsv16,
+            format::bs_fs_yx_bsv16_fsv32,
+            format::bs_fs_zyx_bsv16_fsv32,
+            format::bs_fs_yx_bsv32_fsv16,
+            format::bs_fs_zyx_bsv32_fsv16,
+            format::bs_fs_yx_bsv32_fsv32,
+            format::bs_fs_zyx_bsv32_fsv32,
+        };
+
+        if (!one_of(in_fmt, supported_formats) || !one_of(out_fmt, supported_formats))
             return false;
 
-        auto in_dt = conv_node.get_input_layout(0).data_type;
-        auto wei_dt = conv_node.weights().get_output_layout().data_type;
-        auto out_dt = conv_node.get_output_layout(false).data_type;
+        auto prim = conv_node.get_primitive();
+        if (prim->groups > 1 && !prim->grouped_weights_shape)
+            return false;
+
+        if (in_layout.data_padding || out_layout.data_padding)
+            return false;
 
         bool f16_conv = everyone_is(data_types::f16, in_dt, wei_dt) && one_of(out_dt, {data_types::f16, data_types::f32, data_types::u8, data_types::i8});
         bool u8s8_conv = one_of(in_dt, {data_types::i8, data_types::u8}) &&
@@ -46,7 +92,7 @@ struct ConvolutionImplementationManager : public ImplementationManager {
         if (!is_supported_post_ops(conv_node))
             return false;
 
-        if (conv_node.get_primitive()->deformable_mode)
+        if (prim->deformable_mode)
             return false;
 
         // oneDNN doesn't support asymmetric weights quantization

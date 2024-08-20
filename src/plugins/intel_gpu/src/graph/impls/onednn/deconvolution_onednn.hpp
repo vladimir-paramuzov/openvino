@@ -39,13 +39,22 @@ struct DeconvolutionImplementationManager : public ImplementationManager {
             format::bs_fs_yx_bsv4_fsv2,
         };
 
-        if (!one_of(node.get_preferred_input_fmt(0), supported_formats))
-            return false;
 
         const auto& input_layout = deconv_node.get_input_layout(0);
+        const auto& output_layout = deconv_node.get_output_layout(0);
+
+        auto in_fmt = input_layout.format;
+        auto out_fmt = output_layout.format;
+
         auto in_dt = input_layout.data_type;
         auto wei_dt = deconv_node.weights().get_output_layout().data_type;
-        auto out_dt = deconv_node.get_output_layout(false).data_type;
+        auto out_dt = output_layout.data_type;
+
+        if (input_layout.data_padding || output_layout.data_padding)
+            return false;
+
+        if (!one_of(in_fmt.value, supported_formats) || !one_of(out_fmt.value, supported_formats))
+            return false;
 
         const auto& prim = deconv_node.get_primitive();
 

@@ -52,6 +52,7 @@ void add_required_reorders::add_reorder(program& p, program_node* node, program_
         throw std::runtime_error("Internal Error: container index out of range exception.");
     }
     p.add_intermediate(new_reorder_node, *usr, idx);
+    new_reorder_node.recalc_output_layouts(false);
 }
 
 bool add_required_reorders::test_format(cldnn::program_node& node, format requested_format) {

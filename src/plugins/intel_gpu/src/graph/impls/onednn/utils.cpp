@@ -585,44 +585,6 @@ size_t get_post_ops_count(const program_node& node) {
     return onednn_post_ops_count;
 }
 
-bool is_supported_format(format fmt) {
-    static const std::vector<format> onednn_optimized_formats = {
-            format::any,
-            format::bfyx,
-            format::bfzyx,
-            format::byxf,
-            format::bzyxf,
-            format::b_fs_yx_fsv8,
-            format::b_fs_zyx_fsv8,
-            format::b_fs_yx_fsv16,
-            format::b_fs_zyx_fsv16,
-            format::b_fs_yx_fsv32,
-            format::b_fs_zyx_fsv32,
-            format::bs_fs_yx_bsv4_fsv2,
-            format::bs_fs_yx_bsv4_fsv4,
-            format::bs_fs_yx_bsv8_fsv2,
-            format::bs_fs_zyx_bsv8_fsv2,
-            format::bs_fs_yx_bsv8_fsv4,
-            format::bs_fs_zyx_bsv8_fsv4,
-            format::bs_fs_yx_bsv16_fsv2,
-            format::bs_fs_zyx_bsv16_fsv2,
-            format::bs_fs_yx_bsv16_fsv4,
-            format::bs_fs_zyx_bsv16_fsv4,
-            format::bs_fs_yx_bsv16_fsv8,
-            format::bs_fs_zyx_bsv16_fsv8,
-            format::bs_fs_yx_bsv16_fsv16,
-            format::bs_fs_zyx_bsv16_fsv16,
-            format::bs_fs_yx_bsv16_fsv32,
-            format::bs_fs_zyx_bsv16_fsv32,
-            format::bs_fs_yx_bsv32_fsv16,
-            format::bs_fs_zyx_bsv32_fsv16,
-            format::bs_fs_yx_bsv32_fsv32,
-            format::bs_fs_zyx_bsv32_fsv32,
-        };
-
-    return std::find(onednn_optimized_formats.begin(), onednn_optimized_formats.end(), fmt) != onednn_optimized_formats.end();
-}
-
 bool is_supported_post_ops(const program_node& node) {
     if (get_post_ops_count(node) > 32) {
         return false;

@@ -51,6 +51,34 @@
 
 using namespace cldnn;
 
+template <typename RT>
+RT test_format(program_node& node, format fmt, std::function<RT(const program_node& node)> f) {
+    auto prev_layout = node.get_output_layout();
+    auto new_layout = prev_layout;
+    new_layout.format = fmt;
+    node.set_output_layout(new_layout, false);
+
+    bool has_deps = !node.get_dependencies().empty();
+    layout prev_input_layout = has_deps ? node.get_input_layout(0) : layout();
+    if (has_deps) {
+        auto new_layout = prev_input_layout;
+        new_layout.format = fmt;
+        auto dep_with_port = node.get_dependency_with_port(0);
+        dep_with_port.first->set_output_layout(new_layout, false, dep_with_port.second);
+    }
+
+    // To check if impl exists we modify input[0] and output[0] layouts
+    // to target fmt as condition validate() impl for legacy managers will check both
+    RT res = f(node);
+
+    node.set_output_layout(prev_layout, false);
+    if (has_deps) {
+        auto dep_with_port = node.get_dependency_with_port(0);
+        dep_with_port.first->set_output_layout(prev_input_layout, false, dep_with_port.second);
+    }
+
+    return res;
+}
 static size_t get_post_ops_count(const program_node& node) {
     size_t onednn_post_ops_count = 0;
     for (auto& fo : node.get_fused_primitives()) {
@@ -121,16 +149,8 @@ bool layout_optimizer::is_format_supported(program_node& node, format::type fmt)
     if (!_forcing_map.empty() && _forcing_map.count(node.id()))
         return _forcing_map.at(node.id()).first == fmt;
 
-    auto prev_layout = node.get_output_layout();
-    auto new_layout = prev_layout;
-    new_layout.format = fmt;
-    node.set_output_layout(new_layout, false);
 
-    auto supported = node.type()->has_impl_for(node);
-
-    node.set_output_layout(prev_layout, false);
-
-    return supported;
+    return test_format<bool>(node, fmt, [](const program_node& n) { return n.type()->has_impl_for(n); });
 }
 
 bool layout_optimizer::can_fuse_reorder(program_node& prev, program_node& next, format fmt_prev, format fmt_next) {
@@ -1247,11 +1267,7 @@ impl_types layout_optimizer::get_preferred_impl_type(program_node& node, format 
     if (node.get_dependencies().empty())
         return impl_types::any;
 
-    auto prev_fmt = node.get_preferred_input_fmt(0);
-    node.set_preferred_input_fmt(0, preferred_format);
-    node.recalc_output_layout(false);
-    auto available = node.get_primitive()->type->get_available_impl_types(node);
-    node.set_preferred_input_fmt(0, prev_fmt);
+    auto available = test_format<std::set<impl_types>>(node, preferred_format, [](const program_node& n) { return n.type()->get_available_impl_types(n); });
 
     if (!_optimization_attributes.use_onednn_impls)
         available.erase(impl_types::onednn);
