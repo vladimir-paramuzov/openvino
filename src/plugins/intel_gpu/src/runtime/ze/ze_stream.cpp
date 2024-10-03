@@ -8,6 +8,7 @@
 #include "openvino/core/except.hpp"
 #include "openvino/core/type/element_type.hpp"
 #include "openvino/runtime/properties.hpp"
+#include "ze/ze_command_list.hpp"
 #include "ze_event_pool.hpp"
 #include "ze_event.hpp"
 #include "ze_kernel.hpp"
@@ -323,6 +324,10 @@ void ze_stream::sync_events(std::vector<event::ptr> const& deps, bool is_output)
         m_last_barrier_ev = std::dynamic_pointer_cast<ze_event>(create_user_event(true));
         m_last_barrier_ev->set_queue_stamp(m_queue_counter.load());
     }
+}
+
+command_list::ptr ze_stream::create_command_list() const {
+    return std::make_shared<ze_command_list>(_engine);
 }
 
 }  // namespace ze

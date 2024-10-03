@@ -8,6 +8,8 @@
 #include "kernel.hpp"
 #include "kernel_args.hpp"
 #include "execution_config.hpp"
+#include "command_list.hpp"
+#include "openvino/core/except.hpp"
 
 #include <memory>
 #include <vector>
@@ -76,6 +78,8 @@ public:
 #ifdef ENABLE_ONEDNN_FOR_GPU
     virtual dnnl::stream& get_onednn_stream() = 0;
 #endif
+
+    virtual command_list::ptr create_command_list() const { OPENVINO_NOT_IMPLEMENTED; }
 
 protected:
     QueueTypes m_queue_type;

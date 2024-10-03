@@ -50,6 +50,8 @@ public:
     dnnl::stream& get_onednn_stream() override { OPENVINO_NOT_IMPLEMENTED; }
 #endif
 
+    command_list::ptr create_command_list() const override;
+
 private:
     void sync_events(std::vector<event::ptr> const& deps, bool is_output = false);
 
