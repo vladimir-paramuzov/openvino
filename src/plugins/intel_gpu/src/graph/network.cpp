@@ -59,7 +59,7 @@ namespace cldnn {
 namespace {
 
 #ifdef GPU_DEBUG_CONFIG
-void dump_perf_data_raw(std::string dump_path, const std::list<std::shared_ptr<primitive_inst>>& exec_order) {
+void dump_perf_data_raw(std::string dump_path, const std::vector<std::shared_ptr<primitive_inst>>& exec_order) {
     auto layouts_to_str = [](const std::vector<layout>& layouts) -> std::string {
         std::stringstream s;
         for (size_t i = 0; i < layouts.size(); i++) {

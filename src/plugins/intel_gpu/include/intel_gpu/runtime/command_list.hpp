@@ -22,8 +22,10 @@ public:
     command_list() = default;
     virtual ~command_list() = default;
 
-    virtual void start();
-    virtual void close();
+    virtual void start() = 0;
+    virtual void close() = 0;
+
+    bool is_mutable() { return true; }
 };
 
 }  // namespace cldnn

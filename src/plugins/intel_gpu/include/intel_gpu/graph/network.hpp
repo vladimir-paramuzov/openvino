@@ -8,6 +8,7 @@
 
 #include "intel_gpu/graph/topology.hpp"
 #include "intel_gpu/graph/program.hpp"
+#include "intel_gpu/graph/execution_group.hpp"
 #include "intel_gpu/graph/serialization/binary_buffer.hpp"
 #include "intel_gpu/runtime/memory.hpp"
 #include "intel_gpu/runtime/engine.hpp"
@@ -60,7 +61,6 @@ private:
 
 class primitive_inst;
 class ICompilationContext;
-
 struct network {
 public:
     using ptr = std::shared_ptr<network>;
@@ -222,7 +222,8 @@ private:
     std::vector<shared_mem_type> _in_out_shared_mem_types;
     std::vector<std::shared_ptr<primitive_inst>> _inputs;
     std::vector<std::shared_ptr<primitive_inst>> _outputs;
-    std::list<std::shared_ptr<primitive_inst>> _exec_order;
+    std::vector<std::shared_ptr<primitive_inst>> _exec_order;
+    std::vector<ExecutionGroup> _exec_groups;
     std::list<std::shared_ptr<primitive_inst>> _data_outputs;
 
     ov::intel_gpu::VariablesMap _variables_states;

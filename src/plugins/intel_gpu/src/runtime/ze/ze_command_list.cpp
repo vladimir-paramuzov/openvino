@@ -33,5 +33,6 @@ ze_command_list::~ze_command_list() {
     reset();
 }
 
+
 }  // namespace ze
 }  // namespace cldnn
