@@ -152,6 +152,7 @@ public:
     const program::graph_optimizer_info& get_optimizer_passes_info() const;
     std::map<primitive_id, primitive_id> get_ext_id_mapping() const;
     void execute_impl(const std::vector<event::ptr>& events);
+    void execute_list_impl(const std::vector<event::ptr>& events);
 
     /// @brief Executes network and returns the list of @ref network_output.
     /// @param dependencies List of @ref event objects to be waited before network execution.
@@ -245,6 +246,7 @@ private:
     void add_to_exec_order(const primitive_id& id);
     std::shared_ptr<primitive_inst> find_primitive(const primitive_id& id) const;
     void add_default_output_chains();
+    void build_execution_groups();
     void calculate_weights_cache_capacity();
     output_chains_map::iterator add_output_chain(std::shared_ptr<primitive_inst>& p_inst);
     void set_variables_state_info(const std::string& variable_id, const layout& variable_layout, ov::element::Type user_specified_type, const primitive* p);

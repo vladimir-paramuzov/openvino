@@ -16,9 +16,11 @@ namespace cldnn {
 class primitive_inst;
 
 using ExecutionOrder = std::vector<std::shared_ptr<primitive_inst>>;
+
+// [start, end) interval of nodes from execution order
 struct ExecutionInterval {
-    size_t start = 0;
-    size_t end = 0;
+    size_t start;
+    size_t end;
 };
 
 struct ExecutionGroup {
@@ -44,7 +46,7 @@ private:
     void build_list();
     bool requires_update();
     void mutate();
-    void execute();
+    event::ptr execute(const std::vector<event::ptr>& dep_events);
 };
 
 }  // namespace cldnn

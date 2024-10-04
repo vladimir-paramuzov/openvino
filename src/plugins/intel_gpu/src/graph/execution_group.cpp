@@ -15,11 +15,11 @@ event::ptr ExecutionGroup::run(const std::vector<event::ptr>& dep_events) {
     } else if (rt_type == runtime_types::ze) {
         if (!m_list || !m_list->is_mutable()) {
             build_list();
-            execute();
+            return execute(dep_events);
         } else {
             if (requires_update())
                 mutate();
-            execute();
+            return execute(dep_events);
         }
     }
 
@@ -30,13 +30,19 @@ void ExecutionGroup::build_list() {
 
 }
 bool ExecutionGroup::requires_update() {
-
+    return false;
 }
+
 void ExecutionGroup::mutate() {
 
 }
-void ExecutionGroup::execute() {
+event::ptr ExecutionGroup::execute(const std::vector<event::ptr>& dep_events) {
+    std::vector<event::ptr> ret_events;
+    for (size_t i = m_interval.start; i < m_interval.end; i++) {
+        ret_events.push_back(m_exec_order[i]->execute(dep_events));
+    }
 
+    return m_stream->enqueue_marker(ret_events);
 }
 
 }  // namespace cldnn

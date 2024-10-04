@@ -33,6 +33,7 @@
 #include "read_value_inst.h"
 #include "reshape_inst.h"
 #include "kv_cache_inst.h"
+#include "loop_inst.h"
 #include "program_helpers.h"
 #include "program_dump_graph.h"
 
@@ -207,6 +208,7 @@ network::network(program::ptr program, stream::ptr stream, bool is_internal, boo
     build_exec_order();
     validate_primitives();
     add_default_output_chains();
+    build_execution_groups();
 }
 
 network::network(program::ptr program, bool is_internal, bool is_primary_stream)
@@ -346,6 +348,42 @@ void network::add_default_output_chains() {
     GPU_DEBUG_DEFINE_MEM_LOGGER("add_default_output_chains");
     for (auto& output : _outputs) {
         add_output_chain(output);
+    }
+}
+
+void network::build_execution_groups() {
+    const size_t max_group_size = 10;
+    ExecutionInterval interval = {0, 0};
+
+    auto is_special_node = [](const program_node& node) {
+        return node.is_type<loop>() || node.is_type<condition>();
+    };
+
+    for (size_t i = 0; i < _exec_order.size();) {
+        for (size_t j = 0; j < max_group_size; j++) {
+            interval.end++;
+            if (interval.end >= _exec_order.size()) {
+                break;
+            }
+            auto& curr_node = _exec_order[i + j]->get_node();
+
+            if (is_special_node(curr_node)) {
+                if (interval.end - interval.start > 1)
+                    interval.end--;
+                break;
+            }
+        }
+
+        _exec_groups.emplace_back(_exec_order, get_engine(), get_stream_ptr(), interval);
+
+        interval.start = interval.end;
+        i = interval.end;
+    }
+
+    std::cerr << "TOTAL Primitives: " << _exec_order.size() << std::endl;
+    std::cerr << "Internal: " << is_internal() << std::endl;
+    for (size_t i = 0; i < _exec_groups.size(); i++) {
+        std::cerr << "i = " << i << ": [" << _exec_groups[i].m_interval.start << ", " << _exec_groups[i].m_interval.end << ")\n";
     }
 }
 
@@ -722,7 +760,11 @@ std::map<primitive_id, network_output> network::execute(const std::vector<event:
     // in some cases.
     auto surf_lock = surfaces_lock::create(get_engine().type(), in_out_mem, get_stream());
 
-    execute_impl(dependencies);
+    if (1) {
+        execute_list_impl(dependencies);
+    } else {
+        execute_impl(dependencies);
+    }
 
     std::map<primitive_id, network_output> result;
     for (auto& inst : _outputs) {
@@ -734,6 +776,19 @@ std::map<primitive_id, network_output> network::execute(const std::vector<event:
         result.emplace(id, network_output(ev, inst->output_memory_ptr(0), get_stream_ptr(), inst->get_output_layout(0)));
     }
     return result;
+}
+
+void network::execute_list_impl(const std::vector<event::ptr>& events) {
+    auto deps = events;
+    for (auto& group : _exec_groups) {
+        auto ev = group.run(deps);
+        deps = {ev};
+    }
+
+    auto ev = _stream->enqueue_marker(deps, true);
+    for (auto& inst : _outputs) {
+        _events[inst->id()] = ev;
+    }
 }
 
 void network::execute_impl(const std::vector<event::ptr>& events) {

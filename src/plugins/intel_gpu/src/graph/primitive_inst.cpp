@@ -1647,26 +1647,26 @@ event::ptr primitive_inst::execute(const std::vector<event::ptr>& events) {
                     << "can_be_optimized=" << can_be_optimized() << ")" << std::endl;
 
     const bool out_of_order_queue = get_network().get_stream().get_queue_type() == QueueTypes::out_of_order;
-    if (_exec_deps.empty() && dependencies.empty()) {
-        dependencies = events;
-    } else {
-        // Prepare dependencies events in case of OOO queue, CPU implementation,
-        // or optimized_out impl which has CPU users (needs_completion_event() && !is_output() condition)
-        if (out_of_order_queue || (_impl->is_cpu() && !can_be_optimized()) || (can_be_optimized() && needs_completion_event() && !is_output())) {
-            dependencies.reserve(dependencies.size() + _exec_deps.size());
-            for (auto& input : _exec_deps) {
-                auto& id = input->id();
-                try {
-                    // if the requested event does not exists it means that it has not been executed, so the processing_order is
-                    // wrong or synchronization failed.
-                    auto ev = get_network().get_primitive_event(id);
-                    dependencies.emplace_back(ev);
-                } catch (const std::out_of_range& oor) {
-                    OPENVINO_THROW("[GPU] execution order corrupted: ", oor.what());
-                }
-            }
-        }
-    }
+    // if (_exec_deps.empty() && dependencies.empty()) {
+    dependencies.insert(dependencies.end(), events.begin(), events.end());
+    // } else {
+    //     // Prepare dependencies events in case of OOO queue, CPU implementation,
+    //     // or optimized_out impl which has CPU users (needs_completion_event() && !is_output() condition)
+    //     if (out_of_order_queue || (_impl->is_cpu() && !can_be_optimized()) || (can_be_optimized() && needs_completion_event() && !is_output())) {
+    //         dependencies.reserve(dependencies.size() + _exec_deps.size());
+    //         for (auto& input : _exec_deps) {
+    //             auto& id = input->id();
+    //             try {
+    //                 // if the requested event does not exists it means that it has not been executed, so the processing_order is
+    //                 // wrong or synchronization failed.
+    //                 auto ev = get_network().get_primitive_event(id);
+    //                 dependencies.emplace_back(ev);
+    //             } catch (const std::out_of_range& oor) {
+    //                 OPENVINO_THROW("[GPU] execution order corrupted: ", oor.what());
+    //             }
+    //         }
+    //     }
+    // }
 
     // Replace multiple events with single grouped event in case of barriers synchronization to prevent `_last_barrier_ev` usage as a dependency
     // event of optimized_out instance's users, which may lead to unwanted extra synchronization of CPU impls with GPU kernels
