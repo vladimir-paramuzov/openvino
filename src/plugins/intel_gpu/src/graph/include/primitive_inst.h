@@ -11,6 +11,7 @@
 #include "intel_gpu/runtime/tensor_accessor.hpp"
 #include "intel_gpu/graph/network.hpp"
 #include "intel_gpu/runtime/utils.hpp"
+#include "openvino/core/except.hpp"
 #include "program_node.h"
 #include "primitive_type.h"
 #include "intel_gpu/graph/serialization/binary_buffer.hpp"
@@ -61,6 +62,7 @@ struct primitive_impl {
     virtual void set_arguments(primitive_inst& instance) = 0;
     virtual void set_arguments(primitive_inst& instance, kernel_arguments_data& args) = 0;
     virtual event::ptr execute(const std::vector<event::ptr>& events, primitive_inst& instance) = 0;
+    virtual event::ptr add_to_cmd_list(command_list* list, const std::vector<event::ptr>& events, primitive_inst& instance) { OPENVINO_NOT_IMPLEMENTED; }
     const std::string& get_kernel_name() const { return _kernel_name; }
 
     // class typed_primitive_gpu_impl override this with return false;
@@ -326,6 +328,9 @@ public:
     virtual void update_shape_info_tensor(const kernel_impl_params& params);
     kernel_impl_params get_fake_aligned_params_if_possible(kernel_impl_params const& orig_impl_param);
 
+    std::vector<event::ptr> prepare_primitive(const std::vector<event::ptr>& events);
+    void add_to_command_list(command_list* list);
+
 protected:
     primitive_inst(network& network, program_node const& node, bool allocate_memory);
 
@@ -505,6 +510,16 @@ private:
         return execute_impl(event, reinterpret_cast<typed_primitive_inst<PType>&>(instance));
     }
 
+    event::ptr add_to_cmd_list(command_list* list, const std::vector<event::ptr>& event, primitive_inst& instance) override {
+        if (instance.type() != PType::type_id())
+            throw std::invalid_argument("Implementation type does not match primitive type");
+        if (instance.get_impl() != this)
+            throw std::invalid_argument(
+                "Trying to execute primitive implementation with mismatching primitive instance");
+
+        return add_to_cmd_list(list, event, reinterpret_cast<typed_primitive_inst<PType>&>(instance));
+    }
+
     std::vector<layout> get_internal_buffer_layouts() const override {
         return get_internal_buffer_layouts_impl();
     }
@@ -536,6 +551,9 @@ private:
     virtual void set_arguments_impl(typed_primitive_inst<PType>& /*instance*/) {}
     virtual void set_arguments_impl(typed_primitive_inst<PType>& /*instance*/, kernel_arguments_data& /*args*/) {}
     virtual event::ptr execute_impl(const std::vector<event::ptr>& event, typed_primitive_inst<PType>& instance) = 0;
+    virtual event::ptr add_to_cmd_list(command_list* list, const std::vector<event::ptr>& event, typed_primitive_inst<PType>& instance) {
+        OPENVINO_NOT_IMPLEMENTED;
+    }
 };
 
 template <class PType>

@@ -19,6 +19,7 @@ class ze_kernel : public kernel {
     std::string _kernel_id;
 
 public:
+    uint64_t _cmd_id;
     ze_kernel(ze_kernel_handle_t compiled_kernel, ze_module_handle_t module, const std::string& kernel_id)
         : _compiled_kernel(compiled_kernel)
         , _module(module)

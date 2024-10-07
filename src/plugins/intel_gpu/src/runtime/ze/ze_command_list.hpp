@@ -10,6 +10,9 @@
 #include "ze_event.hpp"
 
 namespace cldnn {
+
+
+
 namespace ze {
 
 class ze_command_list : public command_list {
@@ -21,10 +24,16 @@ public:
     void start() override;
     void close() override;
 
+    void add(kernel& k, const kernel_arguments_desc& args_desc, const kernel_arguments_data& args) override;
+
+
+    ze_command_list_handle_t get_handle() const { return m_command_list; }
+
 
 private:
 
     void reset();
+    uint64_t get_command_id();
 
     const ze_engine& m_engine;
     ze_command_list_handle_t m_command_list = nullptr;

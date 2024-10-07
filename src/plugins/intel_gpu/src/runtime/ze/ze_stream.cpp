@@ -330,5 +330,11 @@ command_list::ptr ze_stream::create_command_list() const {
     return std::make_shared<ze_command_list>(_engine);
 }
 
+event::ptr ze_stream::enqueue_command_list(command_list& list) {
+    auto ze_list = downcast<ze_command_list>(list).get_handle();
+    ZE_CHECK(zeCommandListImmediateAppendCommandListsExp(m_command_list, 1, &ze_list, nullptr, 0, nullptr));
+    return create_user_event(true);
+}
+
 }  // namespace ze
 }  // namespace cldnn

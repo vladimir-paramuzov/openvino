@@ -14,6 +14,7 @@
 
 
 namespace cldnn {
+class kernel;
 
 class command_list {
 public:
@@ -24,6 +25,8 @@ public:
 
     virtual void start() = 0;
     virtual void close() = 0;
+
+    virtual void add(kernel& k, const kernel_arguments_desc& args_desc, const kernel_arguments_data& args) = 0;
 
     bool is_mutable() { return true; }
 };

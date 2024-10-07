@@ -41,7 +41,7 @@ struct ExecutionGroup {
     event::ptr run(const std::vector<event::ptr>& dep_events);
 
 private:
-    std::unique_ptr<command_list> m_list = nullptr;
+    std::shared_ptr<command_list> m_list = nullptr;
 
     void build_list();
     bool requires_update();

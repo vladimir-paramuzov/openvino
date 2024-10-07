@@ -50,6 +50,7 @@ public:
     }
 
     void update(primitive_inst& inst, const kernel_impl_params& impl_param) override { }
+    event::ptr add_to_cmd_list(command_list* list, const std::vector<event::ptr>& events, primitive_inst& instance) override { return nullptr; }
 };
 
 namespace detail {

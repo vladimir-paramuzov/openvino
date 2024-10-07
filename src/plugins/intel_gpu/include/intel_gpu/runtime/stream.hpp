@@ -80,6 +80,7 @@ public:
 #endif
 
     virtual command_list::ptr create_command_list() const { OPENVINO_NOT_IMPLEMENTED; }
+    virtual event::ptr enqueue_command_list(command_list& list) { OPENVINO_NOT_IMPLEMENTED; }
 
 protected:
     QueueTypes m_queue_type;
