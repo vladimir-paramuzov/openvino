@@ -21,10 +21,13 @@
 #include "intel_gpu/runtime/internal_properties.hpp"
 #include "intel_gpu/runtime/itt.hpp"
 #include "intel_gpu/runtime/debug_configuration.hpp"
+#include "openvino/runtime/properties.hpp"
 
 #include <algorithm>
+#include <chrono>
 #include <iterator>
 #include <memory>
+#include <ratio>
 #include <string>
 #include <map>
 #include <functional>
@@ -135,11 +138,18 @@ SyncInferRequest::SyncInferRequest(const std::shared_ptr<const CompiledModel>& c
 }
 
 void SyncInferRequest::infer() {
+    auto start = std::chrono::high_resolution_clock::now();
     OV_ITT_SCOPED_TASK(itt::domains::intel_gpu_plugin, "SyncInferRequest::infer");
     setup_stream_graph();
     std::lock_guard<std::mutex> lk(m_graph->get_mutex());
     enqueue();
     wait();
+    auto end = std::chrono::high_resolution_clock::now();
+
+    if (0) {
+        std::cerr << get_compiled_model()->get_property(ov::model_name.name()).as<std::string>() << " "
+            << std::chrono::duration_cast<std::chrono::milliseconds>(end-start).count() << " ms" << std::endl;
+    }
 }
 
 std::vector<ov::ProfilingInfo> SyncInferRequest::get_profiling_info() const {

@@ -160,6 +160,53 @@ void dump_i4u4(cldnn::data_types type, memory::ptr mem, stream& stream, std::ofs
     file_stream << buffer.str();
 }
 
+template <class T>
+void buf_stats(memory::ptr mem, stream& stream, std::ostream& out_stream, bool dump_raw) {
+    mem_lock<T, mem_lock_type::read> lock(mem, stream);
+    auto mem_ptr = lock.data();
+
+    T max = std::numeric_limits<T>::lowest();
+    T min = std::numeric_limits<T>::max();
+
+    for (size_t i = 0; i < lock.size(); ++i) {
+        max = std::max<T>(max, mem_ptr[i]);
+        min = std::min<T>(min, mem_ptr[i]);
+    }
+    out_stream << "dt=" << mem->get_layout().data_type << " range[" << static_cast<float>(min) << "; " << static_cast<float>(max) << "]" << std::endl;
+}
+
+void buffer_stats(memory::ptr mem, layout data_layout, stream& stream, std::string layerName, bool dump_raw) {
+    std::stringstream ss;
+    if (!mem) {
+        ss << "Empty" << std::endl;
+        return;
+    }
+
+    // Reinterpret buffer to represent actual data layout
+    auto actual_mem = mem->get_engine()->reinterpret_buffer(*mem, data_layout);
+
+    auto mem_dt = actual_mem->get_layout().data_type;
+    if (mem_dt == cldnn::data_types::f32)
+        buf_stats<float>(actual_mem, stream, ss, dump_raw);
+    else if (mem_dt == cldnn::data_types::f16)
+        buf_stats<ov::float16>(actual_mem, stream, ss, dump_raw);
+    else if (mem_dt == cldnn::data_types::i64)
+        buf_stats<int64_t>(actual_mem, stream, ss, dump_raw);
+    else if (mem_dt == cldnn::data_types::i32)
+        buf_stats<int32_t>(actual_mem, stream, ss, dump_raw);
+    else if (mem_dt == cldnn::data_types::i8)
+        buf_stats<int8_t>(actual_mem, stream, ss, dump_raw);
+    else if (mem_dt == cldnn::data_types::u8)
+        buf_stats<uint8_t>(actual_mem, stream, ss, dump_raw);
+    else if (mem_dt == cldnn::data_types::u8)
+        buf_stats<uint8_t>(actual_mem, stream, ss, dump_raw);
+    else
+        std::cout << "Dump for this data type is not supported: " << dt_to_str(mem_dt) << std::endl;
+
+    std::cout << "Stats for layer " << layerName << "\n\t" << ss.str();
+}
+
+
 void log_memory_to_file(memory::ptr mem, layout data_layout, stream& stream, std::string layerName, bool dump_raw) {
     std::cout << "Dump " << (dump_raw ? "raw " : "") << layerName << std::endl;
     GPU_DEBUG_GET_INSTANCE(debug_config);
@@ -369,6 +416,15 @@ NodeDebugHelper::~NodeDebugHelper() {
                 debug_str_for_bin_load[debug_str_for_bin_load.size()-1] = '\"';
                 GPU_DEBUG_COUT << debug_str_for_bin_load << std::endl;;
             }
+        }
+    }
+
+    if (1) {
+        for (size_t i = 0; i < m_inst.outputs_memory_count(); i++) {
+            std::string name =  m_inst.id() + " out " + std::to_string(i);
+            auto output_mem = m_inst.output_memory_ptr(i);
+
+            buffer_stats(output_mem, m_inst.get_output_layout(i), m_stream, name, debug_config->dump_layers_raw);
         }
     }
 }
