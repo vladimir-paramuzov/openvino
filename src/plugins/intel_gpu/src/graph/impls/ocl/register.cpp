@@ -30,13 +30,11 @@ void register_implementations() {
     REGISTER_OCL(experimental_detectron_topk_rois);
     REGISTER_OCL(eltwise);
     REGISTER_OCL(fully_connected);
-    REGISTER_OCL(gather);
     REGISTER_OCL(gather_elements);
     REGISTER_OCL(gemm);
     REGISTER_OCL(generate_proposals);
     REGISTER_OCL(grid_sample);
     REGISTER_OCL(kv_cache);
-    REGISTER_OCL(paged_attention);
     REGISTER_OCL(lrn);
     REGISTER_OCL(multiclass_nms);
     REGISTER_OCL(multinomial);
@@ -83,7 +81,6 @@ void register_implementations() {
     REGISTER_OCL(eye);
     REGISTER_OCL(unique_count);
     REGISTER_OCL(unique_gather);
-    REGISTER_OCL(scaled_dot_product_attention);
     REGISTER_OCL(search_sorted);
     REGISTER_OCL(STFT);
 }

@@ -5,6 +5,8 @@
 #pragma once
 
 #include "implementation_map.hpp"
+#include "intel_gpu/primitives/paged_attention.hpp"
+#include "intel_gpu/primitives/scaled_dot_product_attention.hpp"
 
 #ifdef ENABLE_ONEDNN_FOR_GPU
     #define OV_GPU_WITH_ONEDNN 1
@@ -141,6 +143,7 @@ REGISTER_IMPLS(group_normalization);
 REGISTER_IMPLS(lstm_cell);
 REGISTER_IMPLS(lstm_seq);
 REGISTER_IMPLS(non_max_suppression);
+REGISTER_IMPLS(paged_attention);
 REGISTER_IMPLS(pooling);
 REGISTER_IMPLS(reduce);
 REGISTER_IMPLS(reorder);
@@ -148,6 +151,7 @@ REGISTER_IMPLS(reshape);
 REGISTER_IMPLS(range);
 REGISTER_IMPLS(rope);
 REGISTER_IMPLS(select);
+REGISTER_IMPLS(scaled_dot_product_attention);
 REGISTER_IMPLS(scatter_update);
 REGISTER_IMPLS(scatter_elements_update);
 REGISTER_IMPLS(softmax);
@@ -188,7 +192,6 @@ REGISTER_DEFAULT_IMPLS(mvn, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(matrix_nms, OCL_S);
 REGISTER_DEFAULT_IMPLS(normalize, OCL_S);
 REGISTER_DEFAULT_IMPLS(one_hot, OCL_S);
-REGISTER_DEFAULT_IMPLS(paged_attention, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(permute, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(prior_box, OCL_S);
 REGISTER_DEFAULT_IMPLS(quantize, OCL_S, OCL_D);
@@ -220,6 +223,5 @@ REGISTER_DEFAULT_IMPLS(gather_nonzero, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(eye, OCL_S);
 REGISTER_DEFAULT_IMPLS(unique_count, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(unique_gather, OCL_S, OCL_D);
-REGISTER_DEFAULT_IMPLS(scaled_dot_product_attention, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(search_sorted, OCL_S, OCL_D);
 REGISTER_DEFAULT_IMPLS(STFT, OCL_S, OCL_D);
