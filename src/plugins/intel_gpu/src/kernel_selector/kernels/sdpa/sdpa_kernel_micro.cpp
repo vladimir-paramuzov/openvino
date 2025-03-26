@@ -787,21 +787,9 @@ clKernelData SDPAKernelMicro::get_kernel_data(const sdpa_params& params, bool is
 
     auto head_size = params.conf.head_size;
 
-    ScalarDescriptor s_d;
-    s_d.t = ScalarDescriptor::Types::INT32;
-    s_d.v.s32 = static_cast<uint32_t>(head_size);
-
-    ScalarDescriptor s_k;
-    s_k.t = ScalarDescriptor::Types::INT32;
-    s_k.v.s32 = static_cast<uint32_t>(n_keys.v);
-
-    ScalarDescriptor s_q;
-    s_q.t = ScalarDescriptor::Types::INT32;
-    s_q.v.s32 = static_cast<uint32_t>(n_queries.v);
-
-    kernel.params.scalars.push_back(s_d);
-    kernel.params.scalars.push_back(s_k);
-    kernel.params.scalars.push_back(s_q);
+    kernel.params.scalars.emplace_back(static_cast<uint32_t>(head_size));
+    kernel.params.scalars.emplace_back(static_cast<uint32_t>(n_keys.v));
+    kernel.params.scalars.emplace_back(static_cast<uint32_t>(n_queries.v));
 
     /* Generate microkernel shims */
     micro::ShimOptions shim_options;
@@ -863,18 +851,6 @@ void SDPAKernelMicro::GetUpdateDispatchDataFunc(KernelData& kd) const {
 
         auto head_size = prim_params.conf.head_size;
 
-        ScalarDescriptor s_d;
-        s_d.t = ScalarDescriptor::Types::INT32;
-        s_d.v.s32 = static_cast<uint32_t>(head_size);
-
-        ScalarDescriptor s_k;
-        s_k.t = ScalarDescriptor::Types::INT32;
-        s_k.v.s32 = static_cast<uint32_t>(n_keys.v);
-
-        ScalarDescriptor s_q;
-        s_q.t = ScalarDescriptor::Types::INT32;
-        s_q.v.s32 = static_cast<uint32_t>(n_queries.v);
-
         // TODO: Currently 2nd token version works slower than prefill version
         const bool is_prefill = true;//n_queries.v > 1;
 
@@ -892,9 +868,9 @@ void SDPAKernelMicro::GetUpdateDispatchDataFunc(KernelData& kd) const {
         kernel_data.kernels[target_kernel].skip_execution = KernelData::SkipKernelExecution(prim_params);
 
         kernel_data.kernels[target_kernel].params.scalars.clear();
-        kernel_data.kernels[target_kernel].params.scalars.push_back(s_d);
-        kernel_data.kernels[target_kernel].params.scalars.push_back(s_k);
-        kernel_data.kernels[target_kernel].params.scalars.push_back(s_q);
+        kernel_data.kernels[target_kernel].params.scalars.emplace_back(static_cast<uint32_t>(head_size));
+        kernel_data.kernels[target_kernel].params.scalars.emplace_back(static_cast<uint32_t>(n_keys.v));
+        kernel_data.kernels[target_kernel].params.scalars.emplace_back(static_cast<uint32_t>(n_queries.v));
 
         if (prim_params.conf.is_paged_attention) {
             const auto indexes_dt = Datatype::INT32;

@@ -18,10 +18,7 @@ void KernelData::save(cldnn::BinaryOutputBuffer& ob) const {
     for (const auto& arg : params.arguments) {
         ob << make_data(&arg.t, sizeof(cldnn::argument_desc::Types)) << arg.index;
     }
-    ob << params.scalars.size();
-    for (const auto& scalar : params.scalars) {
-        ob << make_data(&scalar.t, sizeof(cldnn::scalar_desc::Types)) << make_data(&scalar.v, sizeof(cldnn::scalar_desc::ValueT));
-    }
+    ob << params.scalars;
     ob << params.layerID;
 #ifdef ENABLE_ONEDNN_FOR_GPU
     ob << micro_kernels.size();
@@ -41,13 +38,7 @@ void KernelData::load(cldnn::BinaryInputBuffer& ib) {
         ib >> make_data(&arg.t, sizeof(cldnn::argument_desc::Types)) >> arg.index;
     }
 
-    typename cldnn::scalars_desc::size_type scalars_desc_size = 0UL;
-    ib >> scalars_desc_size;
-    params.scalars.resize(scalars_desc_size);
-    for (auto& scalar : params.scalars) {
-        ib >> make_data(&scalar.t, sizeof(cldnn::scalar_desc::Types)) >> make_data(&scalar.v, sizeof(cldnn::scalar_desc::ValueT));
-    }
-
+    ib >> params.scalars;
     ib >> params.layerID;
 
 #ifdef ENABLE_ONEDNN_FOR_GPU

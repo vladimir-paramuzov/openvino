@@ -6,6 +6,7 @@
 
 #include "memory.hpp"
 
+#include <variant>
 #include <vector>
 #include <ostream>
 
@@ -33,38 +34,8 @@ enum class kernel_language {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Scalar
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-struct scalar_desc {
-    union ValueT {
-        uint8_t u8;
-        uint16_t u16;
-        uint32_t u32;
-        uint64_t u64;
-        int8_t s8;
-        int16_t s16;
-        int32_t s32;
-        int64_t s64;
-        float f32;
-        double f64;
-    };
-
-    enum class Types {
-        UINT8,
-        UINT16,
-        UINT32,
-        UINT64,
-        INT8,
-        INT16,
-        INT32,
-        INT64,
-        FLOAT32,
-        FLOAT64,
-    };
-
-    Types t;
-    ValueT v;
-};
-
-using scalars_desc = std::vector<scalar_desc>;
+using Scalar = std::variant<uint8_t, int8_t, uint16_t, int16_t, uint32_t, int32_t, uint64_t, int64_t, float, double>;
+using scalars_desc = std::vector<Scalar>;
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

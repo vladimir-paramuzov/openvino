@@ -116,10 +116,7 @@ KernelsData ConcatenationKernel_fs_b_yx_fsv32::GetKernelsData(const Params& para
         kernel.params.arguments.push_back({ArgumentDescriptor::Types::OUTPUT, 0});
         kernel.skip_execution = KernelData::SkipKernelExecution(newParams);
 
-        ScalarDescriptor s;
-        s.t = ScalarDescriptor::Types::UINT32;
-        s.v.u32 = lastOffset;
-        kernel.params.scalars.push_back(s);
+        kernel.params.scalars.emplace_back(lastOffset);
         kernel.params.arguments.push_back({ArgumentDescriptor::Types::SCALAR, 0});
 
         auto concatChannelIndex = DataTensor::Channelndex(orgParams.inputs[i].GetLayout(), GetConcatChannel(orgParams));

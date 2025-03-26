@@ -14,6 +14,8 @@
 
 #include <cassert>
 #include <string>
+#include <type_traits>
+#include <variant>
 #include <vector>
 #include <memory>
 
@@ -74,7 +76,6 @@ void set_arguments_impl(ocl_kernel_type& kernel,
                         const arguments_desc& args,
                         const kernel_arguments_data& data) {
     using args_t = argument_desc::Types;
-    using scalar_t = scalar_desc::Types;
     for (uint32_t i = 0; i < static_cast<uint32_t>(args.size()); i++) {
         cl_int status = CL_INVALID_ARG_VALUE;
         switch (args[i].t) {
@@ -120,52 +121,16 @@ void set_arguments_impl(ocl_kernel_type& kernel,
                 status = set_kernel_arg(kernel, i, data.slope);
                 break;
             case args_t::SCALAR:
-                if (data.scalars && args[i].index < data.scalars->size()) {
+                if (data.scalars != nullptr && args[i].index < data.scalars->size()) {
                     const auto& scalar = (*data.scalars)[args[i].index];
-                    switch (scalar.t) {
-                        case scalar_t::UINT8:
-                            status = kernel.setArg(i, scalar.v.u8);
-                            GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " (u8): " << static_cast<int>(scalar.v.u8) << "\n";
-                            break;
-                        case scalar_t::UINT16:
-                            status = kernel.setArg(i, scalar.v.u16);
-                            GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " (u16): " << scalar.v.u16 << "\n";
-                            break;
-                        case scalar_t::UINT32:
-                            status = kernel.setArg(i, scalar.v.u32);
-                            GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " (u32): " << scalar.v.u32 << "\n";
-                            break;
-                        case scalar_t::UINT64:
-                            status = kernel.setArg(i, scalar.v.u64);
-                            GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " (u64): " << scalar.v.u64 << "\n";
-                            break;
-                        case scalar_t::INT8:
-                            status = kernel.setArg(i, scalar.v.s8);
-                            GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " (s8): " << static_cast<int>(scalar.v.s8) << "\n";
-                            break;
-                        case scalar_t::INT16:
-                            status = kernel.setArg(i, scalar.v.s16);
-                            GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " (s16): " << scalar.v.s16 << "\n";
-                            break;
-                        case scalar_t::INT32:
-                            status = kernel.setArg(i, scalar.v.s32);
-                            GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " (s32): " << scalar.v.s32 << "\n";
-                            break;
-                        case scalar_t::INT64:
-                            status = kernel.setArg(i, scalar.v.s64);
-                            GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " (s64): " << scalar.v.s64 << "\n";
-                            break;
-                        case scalar_t::FLOAT32:
-                            status = kernel.setArg(i, scalar.v.f32);
-                            GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " (f32): " << scalar.v.f32 << "\n";
-                            break;
-                        case scalar_t::FLOAT64:
-                            status = kernel.setArg(i, scalar.v.f64);
-                            GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " (f64): " << scalar.v.f64 << "\n";
-                            break;
-                        default:
-                            break;
-                    }
+                    std::visit([&](auto&& arg) {
+                        using T = std::decay_t<decltype(arg)>;
+                        status = kernel.setArg(i, arg);
+
+                        GPU_DEBUG_TRACE_DETAIL << "kernel: " << kernel.get() << " set scalar " << i << " "
+                                               << "(" << ov::element::from<T>().get_type_name() << "): "
+                                               << (std::is_integral_v<T> ? static_cast<int64_t>(arg) : arg) << "\n";
+                    }, scalar);
                 }
                 break;
             case args_t::CELL:

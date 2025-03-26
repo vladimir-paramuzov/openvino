@@ -36,7 +36,6 @@ using kernel_arguments = kernel_selector::Arguments;
 using kernel_argument_element = kernel_selector::ArgumentDescriptor;
 using kernel_argument_types = kernel_selector::ArgumentDescriptor::Types;
 using kernel_scalar_arguments = kernel_selector::Scalars;
-using kernel_scalar_argument_types = kernel_selector::ScalarDescriptor::Types;
 
 using data_type = kernel_selector::Datatype;
 using weights_type = kernel_selector::WeightsType;

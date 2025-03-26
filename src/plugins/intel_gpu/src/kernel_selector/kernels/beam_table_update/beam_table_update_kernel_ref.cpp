@@ -17,12 +17,9 @@ void BeamTableUpdateKernelRef::GetUpdateDispatchDataFunc(KernelData& kd) const {
         kd.kernels[0].params.workGroups.global = dispatchData.gws;
         kd.kernels[0].params.workGroups.local = dispatchData.lws;
         kd.kernels[0].skip_execution = false;
-        ScalarDescriptor is_state_set;
 
-        is_state_set.t = ScalarDescriptor::Types::UINT8;
-        is_state_set.v.u8 = prim_params.is_state_set ? 1 : 0;
         kd.kernels[0].params.scalars.resize(1);
-        kd.kernels[0].params.scalars[0] = is_state_set;
+        kd.kernels[0].params.scalars[0] = static_cast<uint8_t>(prim_params.is_state_set ? 1 : 0);
     };
 }
 
@@ -55,10 +52,7 @@ KernelsData BeamTableUpdateKernelRef::GetKernelsData(const Params& params) const
                      static_cast<int>(kernel_params.outputs.size()),
                      kernel_params.is_shape_agnostic);
 
-    ScalarDescriptor is_state_set;
-    is_state_set.t = ScalarDescriptor::Types::UINT8;
-    is_state_set.v.u8 = 0;
-    kernel.params.scalars.push_back(is_state_set);
+    kernel.params.scalars.emplace_back(static_cast<uint8_t>(0));
     kernel.params.arguments.push_back({ArgumentDescriptor::Types::SCALAR, 0});
 
     return {kernel_data};

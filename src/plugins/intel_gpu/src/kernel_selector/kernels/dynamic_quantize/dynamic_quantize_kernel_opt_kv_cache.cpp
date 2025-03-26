@@ -201,10 +201,7 @@ void DynamicQuantizeKernelKVCache::GetUpdateDispatchDataFunc(KernelData& kd) con
         if (prim_params.append_axis != -1) {
             kd.kernels[0].params.scalars.clear();
 
-            ScalarDescriptor axis_offset;
-            axis_offset.t = ScalarDescriptor::Types::UINT32;
-            axis_offset.v.u32 = static_cast<uint32_t>(prim_params.axis_offset);
-            kd.kernels[0].params.scalars.push_back(axis_offset);
+            kd.kernels[0].params.scalars.emplace_back(static_cast<uint32_t>(prim_params.axis_offset));
         }
     };
 }
@@ -285,4 +282,3 @@ bool DynamicQuantizeKernelKVCache::Validate(const Params& params) const {
     return true;
 }
 }  // namespace kernel_selector
-

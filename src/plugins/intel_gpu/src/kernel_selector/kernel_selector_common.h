@@ -49,7 +49,7 @@ std::string GetStringEnv(const char* varName);
 using KernelLanguage = cldnn::kernel_language;
 using KernelString = cldnn::kernel_string;
 using WorkGroupSizes = cldnn::work_group_sizes;
-using ScalarDescriptor = cldnn::scalar_desc;
+using Scalar = cldnn::Scalar;
 using Scalars = cldnn::scalars_desc;
 using ArgumentDescriptor = cldnn::argument_desc;
 using Arguments = cldnn::arguments_desc;

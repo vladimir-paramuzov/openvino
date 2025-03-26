@@ -67,9 +67,7 @@ KernelsData KVCacheUpdateKernelRef::GetKernelsData(const Params& p) const {
     kernel.params.arguments.push_back({ArgumentDescriptor::Types::INTERNAL_BUFFER, 2});
     kernel.params.arguments.push_back({ArgumentDescriptor::Types::SCALAR, 0});
 
-    ScalarDescriptor is_prefill_stage;
-    is_prefill_stage.t = ScalarDescriptor::Types::UINT32;
-    is_prefill_stage.v.u32 = static_cast<uint32_t>(0);
+    Scalar is_prefill_stage = static_cast<uint32_t>(0);
     kernel.params.scalars.push_back(is_prefill_stage);
 
     return {kd};
@@ -196,7 +194,7 @@ void KVCacheUpdateKernelRef::GetUpdateDispatchDataFunc(KernelData& kd) const {
         kd.internalBuffers.emplace_back(indexes_buf_size, lockable);
         kd.internalBufferDataType = indexes_dt;
 
-        kd.kernels[0].params.scalars[0].v.s32 = static_cast<int32_t>(prim_params.is_prefill);
+        kd.kernels[0].params.scalars[0] = static_cast<int32_t>(prim_params.is_prefill);
     };
 }
 

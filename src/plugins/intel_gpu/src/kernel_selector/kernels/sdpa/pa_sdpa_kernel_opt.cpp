@@ -413,13 +413,10 @@ void PagedAttentionSDPAKernelOpt::GetUpdateDispatchDataFunc(KernelData& kd) cons
         kd.kernels[KernelsTypes::FINALIZATION_MULTI_TOKENS].params.workGroups.local = dispatch_data.lws;
         kd.kernels[KernelsTypes::FINALIZATION_MULTI_TOKENS].skip_execution = num_of_partitions == 1 || !multi_tokens_mode || scores_calc_only;
 
-        ScalarDescriptor num_of_partitions_scalar;
-        num_of_partitions_scalar.t = ScalarDescriptor::Types::UINT32;
-        num_of_partitions_scalar.v.u32 = static_cast<uint32_t>(num_of_partitions);
         kd.kernels[KernelsTypes::FINALIZATION].params.scalars.resize(1);
-        kd.kernels[KernelsTypes::FINALIZATION].params.scalars[0] = num_of_partitions_scalar;
+        kd.kernels[KernelsTypes::FINALIZATION].params.scalars[0] = static_cast<uint32_t>(num_of_partitions);
         kd.kernels[KernelsTypes::FINALIZATION_MULTI_TOKENS].params.scalars.resize(1);
-        kd.kernels[KernelsTypes::FINALIZATION_MULTI_TOKENS].params.scalars[0] = num_of_partitions_scalar;
+        kd.kernels[KernelsTypes::FINALIZATION_MULTI_TOKENS].params.scalars[0] = static_cast<uint32_t>(num_of_partitions);
 
         if (has_scores_output) {
             dispatch_data = SetDefault(prim_params, KernelsTypes::SCORES_CALCULATION);
@@ -427,9 +424,7 @@ void PagedAttentionSDPAKernelOpt::GetUpdateDispatchDataFunc(KernelData& kd) cons
             kd.kernels[KernelsTypes::SCORES_CALCULATION].params.workGroups.local = dispatch_data.lws;
             kd.kernels[KernelsTypes::SCORES_CALCULATION].skip_execution = false;
 
-            ScalarDescriptor is_mixed_mode;
-            is_mixed_mode.t = ScalarDescriptor::Types::UINT32;
-            is_mixed_mode.v.u32 = static_cast<uint32_t>(multi_tokens_mode);
+            Scalar is_mixed_mode = static_cast<uint32_t>(multi_tokens_mode);
             kd.kernels[KernelsTypes::SCORES_CALCULATION].params.scalars.resize(1);
             kd.kernels[KernelsTypes::SCORES_CALCULATION].params.scalars[0] = is_mixed_mode;
         }

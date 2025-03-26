@@ -370,12 +370,8 @@ KernelsData SDPAKernelOpt::GetKernelsData(const Params& params) const {
             const auto num_of_partitions = get_partitions_num(prim_params, kernel_idx);
             kernel.params.arguments.push_back({ArgumentDescriptor::Types::SCALAR, 0});
 
-            ScalarDescriptor num_of_partitions_scalar;
-            num_of_partitions_scalar.t = ScalarDescriptor::Types::UINT32;
-            num_of_partitions_scalar.v.u32 = static_cast<uint32_t>(num_of_partitions);
-
             kernel.params.scalars.clear();
-            kernel.params.scalars.push_back(num_of_partitions_scalar);
+            kernel.params.scalars.emplace_back(static_cast<uint32_t>(num_of_partitions));
         }
     }
 
@@ -403,17 +399,13 @@ void SDPAKernelOpt::GetUpdateDispatchDataFunc(KernelData& kd) const {
                 const auto seq_len_partition_size = get_seq_len_partition_size(params, prim_params.conf.head_size, KernelsTypes::MULTI_TOKENS);
 
                 kernel_data.kernels[0].params.scalars.resize(1);
-                kernel_data.kernels[0].params.scalars[0].t = ScalarDescriptor::Types::UINT32;
-                kernel_data.kernels[0].params.scalars[0].v.u32 = static_cast<uint32_t>(Align(max_seq_len, seq_len_partition_size));
+                kernel_data.kernels[0].params.scalars[0] = static_cast<uint32_t>(Align(max_seq_len, seq_len_partition_size));
             }
         } else {
             const auto num_of_partitions = get_partitions_num(prim_params, KernelsTypes::SINGLE_TOKEN);
             const auto buf_sizes = get_internal_buffer_sizes(prim_params, KernelsTypes::SINGLE_TOKEN);
             const auto is_prefill = is_prefill_stage(prim_params);
 
-            ScalarDescriptor num_of_partitions_scalar;
-            num_of_partitions_scalar.t = ScalarDescriptor::Types::UINT32;
-            num_of_partitions_scalar.v.u32 = static_cast<uint32_t>(num_of_partitions);
 
             auto dispatch_data1 = SetDefault(prim_params, KernelsTypes::SINGLE_TOKEN);
             kernel_data.kernels[KernelsTypes::SINGLE_TOKEN].params.workGroups.global = dispatch_data1.gws;
@@ -431,7 +423,7 @@ void SDPAKernelOpt::GetUpdateDispatchDataFunc(KernelData& kd) const {
             kernel_data.kernels[KernelsTypes::FINALIZATION].skip_execution = is_prefill || num_of_partitions == 1;
 
             kernel_data.kernels[KernelsTypes::FINALIZATION].params.scalars.clear();
-            kernel_data.kernels[KernelsTypes::FINALIZATION].params.scalars.push_back(num_of_partitions_scalar);
+            kernel_data.kernels[KernelsTypes::FINALIZATION].params.scalars.emplace_back(static_cast<uint32_t>(num_of_partitions));
 
             kernel_data.internalBuffers.clear();
             kernel_data.internalBuffers.push_back(buf_sizes[0]);
